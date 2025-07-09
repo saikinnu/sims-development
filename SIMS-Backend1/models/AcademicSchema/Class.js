@@ -6,25 +6,50 @@ const ClassSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
-  academic_year: {
-    type: String,
+  strength: {
+    type: Number,
     required: true,
   },
-  class_teacher_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Teacher',
-    required: true,
+  grade:{
+    type: String
   },
-  room_number: {
-    type: String,
-    required: true,
+  supervisor:{
+    type:String
   },
-  subjects: [
+  teachers_details:[
     {
-      subject_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject' },
-      teachers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Teacher' }],
-    },
+      name: {
+        type: String,
+        required: true
+      },
+      empId: {
+        type: String,
+        required: true
+      },
+      subjects: [{
+        type: String
+      }]
+    }
   ],
+  // academic_year: {
+  //   type: String,
+  //   required: true,
+  // },
+  // class_teacher_id: {
+  //   type: mongoose.Schema.Types.ObjectId,
+  //   ref: 'Teacher',
+  //   required: true,
+  // },
+  // room_number: {
+  //   type: String,
+  //   required: true,
+  // },
+  // subjects: [
+  //   {
+  //     subject_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject' },
+  //     teachers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Teacher' }],
+  //   },
+  // ],
 }, { timestamps: true });
 
 module.exports = mongoose.model('Class', ClassSchema);

@@ -1,45 +1,53 @@
 const Parent = require('../../models/CoreUser/Parent');
 const Student = require('../../models/CoreUser/Student');
 const cloudinary = require('../../config/cloudinary');
+const User = require('../../models/CoreUser/User');
 
 // CREATE
 exports.createParent = async (req, res) => {
   try {
-    const {
-      parent_id,
-      full_name,
-      phone,
-      occupation,
-      address,
-      relationship
-    } = req.body;
+    const { user_id, full_name, email, password, childrenCount, phone, address } = req.body;
 
-    let profileImage = '';
-    if (req.file) {
-      profileImage = req.file.path;
+    // Basic validation
+    if (!user_id || !full_name || !email || !password || !phone) {
+      return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    const parent = new Parent({
-      parent_id,
+    const parent = await Parent.create({
+      user_id,
       full_name,
+      email,
+      password,
       phone,
-      occupation,
-      address,
-      relationship,
-      profileImage,
+      role: 'parent',
+      childrenCount: childrenCount || 1, // Default to 1 if not provided
+      address: address || '',
     });
 
-    await parent.save();
+    // Create corresponding user
+    await User.create({
+      user_id,
+      email,
+      password,
+      role: 'parent',
+    });
+
     res.status(201).json(parent);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    console.error('Error creating parent:', err);
+    res.status(400).json({ 
+      message: err.message.includes('duplicate key') ? 
+        'Duplicate user_id or email' : 
+        'Failed to create parent',
+      error: err.message 
+    });
   }
 };
 
 // GET ALL
 exports.getAllParents = async (req, res) => {
   try {
-    const parents = await Parent.find().populate('parent_id', 'email');
+    const parents = await Parent.find().populate('user_id', 'email');
     res.json(parents);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -66,23 +74,23 @@ exports.updateParent = async (req, res) => {
     const {
       full_name,
       phone,
-      occupation,
-      address,
-      relationship
+      // occupation,
+      address
+      // relationship
     } = req.body;
 
     // Update fields
     if (full_name) parent.full_name = full_name;
     if (phone) parent.phone = phone;
-    if (occupation) parent.occupation = occupation;
+    // if (occupation) parent.occupation = occupation;
     if (address) parent.address = address;
-    if (relationship) parent.relationship = relationship;
+    // if (relationship) parent.relationship = relationship;
 
     // Replace profile image if new one uploaded
-    if (req.file) {
-      // Optional: delete old image from Cloudinary if stored with public_id
-      parent.profileImage = req.file.path;
-    }
+    // if (req.file) {
+    //   // Optional: delete old image from Cloudinary if stored with public_id
+    //   parent.profileImage = req.file.path;
+    // }
 
     const updated = await parent.save();
     res.json(updated);

@@ -1,20 +1,18 @@
-// C:\Users\user\Desktop\SIMS\src\pages\admin\parents\AddParent.jsx
 import React, { useState } from 'react';
-// Select is no longer needed here, can be removed if not used elsewhere
+import axios from 'axios';
 // import Select from 'react-select'; 
 
-// Removed SUBJECT_OPTIONS and CLASS_OPTIONS as they are no longer needed.
 
 function AddParent({ onClose, onSave, existingParents }) {
   const [formData, setFormData] = useState({
-    parentId: '',
+    user_id: '',
     password: '',
-    name: '',
+    full_name: '',
     email: '',
-    phone: '',
     childrenCount: 1, // New field, default to 1
+    phone: '',
     address: '',
-    image: null,
+    // image: null,
   });
 
   const [errors, setErrors] = useState({});
@@ -22,15 +20,15 @@ function AddParent({ onClose, onSave, existingParents }) {
 
   const validateForm = () => {
     const newErrors = {};
-    const { parentId, name, email, phone, password, childrenCount } = formData; // Removed subject, classes
-    const trimmedParentId = parentId.trim();
+    const { user_id, full_name, email, phone, password, childrenCount } = formData; // Removed subject, classes
+    const trimmedParentId = user_id.trim();
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedPhone = phone.trim();
     const trimmedPassword = password.trim();
 
-    if (!trimmedParentId) newErrors.parentId = 'Parent ID is required';
+    if (!trimmedParentId) newErrors.user_id = 'Parent ID is required';
     if (!trimmedPassword) newErrors.password = 'Password is required';
-    if (!name.trim()) newErrors.name = 'Name is required';
+    if (!full_name.trim()) newErrors.full_name = 'Name is required';
 
     const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
     if (!trimmedEmail) newErrors.email = 'Email is required';
@@ -45,17 +43,17 @@ function AddParent({ onClose, onSave, existingParents }) {
     }
 
     // Check for duplicate Parent IDs, emails, and phone numbers among existing parents
-    if (existingParents.some(p => p.parentId.toLowerCase() === trimmedParentId.toLowerCase())) {
-      newErrors.parentId = 'Duplicate Parent ID found';
+    if (existingParents.some(p => p.user_id.toLowerCase() === trimmedParentId.toLowerCase())) {
+      newErrors.user_id = 'Duplicate Parent ID found';
     }
 
-    if (existingParents.some(p => p.email.toLowerCase() === trimmedEmail)) {
-      newErrors.email = 'Duplicate Gmail ID found';
-    }
+    // if (existingParents.some(p => p.email.toLowerCase() === trimmedEmail)) {
+    //   newErrors.email = 'Duplicate Gmail ID found';
+    // }
 
-    if (existingParents.some(p => p.phone === trimmedPhone)) {
-      newErrors.phone = 'Duplicate phone number found';
-    }
+    // if (existingParents.some(p => p.phone === trimmedPhone)) {
+    //   newErrors.phone = 'Duplicate phone number found';
+    // }
 
     // Validate Children Count
     if (childrenCount < 1 || childrenCount > 3) {
@@ -88,23 +86,49 @@ function AddParent({ onClose, onSave, existingParents }) {
     }
   };
 
-  const handleSubmit = () => {
-    if (!validateForm()) return;
+  const handleSubmit = async () => {
+  if (!validateForm()) return;
+
+  try {
+    const token = JSON.parse(localStorage.getItem('authToken'));
+    if (!token) {
+      console.error('No token found');
+      return;
+    }
 
     const formattedData = {
-      ...formData,
-      parentId: formData.parentId.trim(),
-      password: formData.password.trim(),
-      email: formData.email.trim(),
+      user_id: formData.user_id.trim(),
+      full_name: formData.full_name.trim(),
+      email: formData.email.trim().toLowerCase(),
+      password: formData.password,
+      childrenCount: formData.childrenCount,
       phone: formData.phone.trim(),
-      // childrenCount is already a number
-      address: formData.address?.trim() || '', // Handle optional address
-      image: formData.image, // Image can be null
+      address: formData.address?.trim() || '',
     };
+
+    console.log('Submitting:', formattedData); // Add this for debugging
+
+    const response = await axios.post(
+      'http://localhost:5000/api/parents/',
+      formattedData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      }
+    );
 
     onSave(formattedData);
     onClose();
-  };
+  } catch (err) {
+    console.error('Error details:', {
+      message: err.message,
+      response: err.response?.data,
+      config: err.config
+    });
+  }
+};
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
@@ -115,13 +139,13 @@ function AddParent({ onClose, onSave, existingParents }) {
           {/* Parent ID */}
           <div>
             <input
-              name="parentId"
-              value={formData.parentId}
+              name="user_id"
+              value={formData.user_id}
               onChange={handleChange}
               placeholder="Parent ID *"
-              className={`p-2 border rounded w-full ${errors.parentId ? 'border-red-500' : 'border-gray-300'}`}
+              className={`p-2 border rounded w-full ${errors.user_id ? 'border-red-500' : 'border-gray-300'}`}
             />
-            {errors.parentId && <p className="text-red-500 text-sm mt-1">{errors.parentId}</p>}
+            {errors.user_id && <p className="text-red-500 text-sm mt-1">{errors.user_id}</p>}
           </div>
 
           {/* Password with toggle */}
@@ -145,7 +169,7 @@ function AddParent({ onClose, onSave, existingParents }) {
           </div>
 
           {/* Other Inputs */}
-          {['name', 'email', 'phone', 'address'].map((field) => (
+          {['full_name', 'email', 'phone', 'address'].map((field) => (
             <div key={field}>
               <input
                 name={field}

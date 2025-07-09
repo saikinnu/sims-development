@@ -106,53 +106,30 @@ exports.updateTeacher = async (req, res) => {
     const {
       full_name,
       phone,
-      // qualification,
-      subjects_taught,
-      assigned_classes,
+      subjects_taught, // These will already be arrays
+      assigned_classes, // These will already be arrays
       class_teacher,
+      email,
+      password,
+      address,
     } = req.body;
     console.log(req.body);
-    const updates = req.body;
 
-    // 1. Update text fields
-    if (full_name) teacher.full_name = full_name;
-    if (phone) teacher.phone = phone;
-    // if (qualification) teacher.qualification = qualification;
-    if (subjects_taught) teacher.subjects_taught = JSON.parse(subjects_taught);
-    if (assigned_classes) teacher.assigned_classes = JSON.parse(assigned_classes);
-    if (class_teacher) teacher.class_teacher = class_teacher;
-    if (email) teacher.email = email;
-    if (password) teacher.password = password;
-    if (address) teacher.address = address;
-    // 2. Handle new profile image
-    // if (req.files['profile_image']) {
-    //   // Delete old profile image from Cloudinary
-    //   if (teacher.profile_image?.public_id) {
-    //     await cloudinary.uploader.destroy(teacher.profile_image.public_id);
-    //   }
+    // Create an object to hold the updates, starting with all fields from req.body
+    const updatesToApply = { ...req.body };
 
-    //   const img = req.files['profile_image'][0];
-    //   teacher.profile_image = {
-    //     public_id: img.filename,
-    //     url: img.path,
-    //   };
-    // }
+    // No need to parse subjects_taught and assigned_classes, they are already arrays from the frontend.
+    // Ensure they are directly assigned if present.
+    if (subjects_taught !== undefined) { // Check for undefined to allow empty arrays
+      updatesToApply.subjects_taught = subjects_taught;
+    }
+    if (assigned_classes !== undefined) { // Check for undefined to allow empty arrays
+      updatesToApply.assigned_classes = assigned_classes;
+    }
 
-    // 3. Handle new certificates
-    // if (req.files['certificates']) {
-    //   // Delete old certificates from Cloudinary
-    //   for (let cert of teacher.certificates || []) {
-    //     if (cert.public_id) {
-    //       await cloudinary.uploader.destroy(cert.public_id);
-    //     }
-    //   }
+    // Apply all updates from the `updatesToApply` object to the teacher document.
+    Object.assign(teacher, updatesToApply);
 
-    //   teacher.certificates = req.files['certificates'].map(file => ({
-    //     public_id: file.filename,
-    //     url: file.path,
-    //   }));
-    // }
-    Object.assign(teacher, updates);
     const updatedTeacher = await teacher.save();
     res.json(updatedTeacher);
   } catch (err) {

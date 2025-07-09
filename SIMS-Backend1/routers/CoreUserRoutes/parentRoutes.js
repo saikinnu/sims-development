@@ -33,7 +33,7 @@ router.put(
 router.delete(
   '/:id',
   protect,
-  checkRole('superadmin'),
+  checkRole('admin','superadmin'),
   parentController.deleteParent
 );
 

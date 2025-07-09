@@ -3,34 +3,48 @@ const { Schema } = mongoose;
 
 const ParentSchema = new Schema(
   {
-    parent_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
+    user_id: {
+      // type: mongoose.Schema.Types.ObjectId,
+      // ref: 'User',
+      type:String,
+      // required: true,
       unique: true,
     },
     full_name: {
       type: String,
-      required: true,
+      // required: true,
+    },
+    email:{
+      type:String
+    },
+    password:{
+      type:String
+    },
+    childrenCount:{
+      type:Number,
+      default:0,
+    },
+    role:{
+      type:String
     },
     phone: {
       type: String,
-      required: true,
+      // required: true,
     },
-    occupation: {
-      type: String,
-    },
+    // occupation: {
+    //   type: String,
+    // },
     address: {
       type: String,
     },
-    relationship: {
-      type: String,
-      enum: ['Mother', 'Father', 'Guardian'],
-      required: true,
-    },
-    profileImage: {
-      type: String, // Cloudinary URL
-    },
+    // relationship: {
+    //   type: String,
+    //   enum: ['Mother', 'Father', 'Guardian'],
+    //   // required: true,
+    // },
+    // profileImage: {
+    //   type: String, // Cloudinary URL
+    // },
   },
   {
     timestamps: true,

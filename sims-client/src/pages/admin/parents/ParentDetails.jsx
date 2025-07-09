@@ -1,9 +1,5 @@
-// C:\Users\user\Desktop\SIMS\src\pages\admin\parents\ParentDetails.jsx
 import React, { useState, useEffect } from 'react';
-// Select is no longer needed here, can be removed if not used elsewhere
-// import Select from 'react-select'; 
-
-// Removed SUBJECT_OPTIONS and CLASS_OPTIONS as they are no longer needed.
+import axios from 'axios';
 
 function ParentDetails({ data, editable = false, onClose, onUpdate, existingParents = [] }) {
   const [formData, setFormData] = useState({
@@ -26,14 +22,14 @@ function ParentDetails({ data, editable = false, onClose, onUpdate, existingPare
 
   const validateForm = () => {
     const newErrors = {};
-    const { parentId, name, email, phone, childrenCount, password } = formData; // Removed subject, classes
-    const trimmedParentId = parentId?.trim();
-    const trimmedName = name?.trim();
+    const { user_id, full_name, email, phone, childrenCount, password } = formData; // Removed subject, classes
+    const trimmedParentId = user_id?.trim();
+    const trimmedName = full_name?.trim();
     const trimmedEmail = email?.trim().toLowerCase();
     const trimmedPhone = phone?.trim();
 
-    if (!trimmedParentId) newErrors.parentId = 'Parent ID is required';
-    if (!trimmedName) newErrors.name = 'Name is required';
+    if (!trimmedParentId) newErrors.user_id = 'Parent ID is required';
+    if (!trimmedName) newErrors.full_name = 'Name is required';
 
     const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
     if (trimmedEmail && !gmailRegex.test(trimmedEmail)) {
@@ -49,17 +45,17 @@ function ParentDetails({ data, editable = false, onClose, onUpdate, existingPare
     // Filter existing parents to exclude the current parent being edited
     if (existingParents) {
         existingParents
-            .filter((p) => p.parentId !== data.parentId)
+            .filter((p) => p.user_id !== data.user_id)
             .forEach((p) => {
-                if (p.parentId?.toLowerCase() === trimmedParentId?.toLowerCase()) {
-                    newErrors.parentId = 'Duplicate Parent ID found';
+                if (p.user_id?.toLowerCase() === trimmedParentId?.toLowerCase()) {
+                    newErrors.user_id = 'Duplicate Parent ID found';
                 }
-                if (trimmedEmail && p.email?.toLowerCase() === trimmedEmail) {
-                    newErrors.email = 'Duplicate Gmail ID found';
-                }
-                if (trimmedPhone && p.phone === trimmedPhone) {
-                    newErrors.phone = 'Duplicate phone number found';
-                }
+                // if (trimmedEmail && p.email?.toLowerCase() === trimmedEmail) {
+                //     newErrors.email = 'Duplicate Gmail ID found';
+                // }
+                // if (trimmedPhone && p.phone === trimmedPhone) {
+                //     newErrors.phone = 'Duplicate phone number found';
+                // }
             });
     }
 
@@ -99,22 +95,46 @@ function ParentDetails({ data, editable = false, onClose, onUpdate, existingPare
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    const updatedData = {
-      ...formData,
-      // Trim string fields
-      parentId: formData.parentId?.trim(),
-      name: formData.name?.trim(),
-      email: formData.email?.trim().toLowerCase(), // Store email in lowercase
-      phone: formData.phone?.trim(),
-      address: formData.address?.trim() || '', // Handle optional address
-      // childrenCount is already a number
-    };
+    try {
+      const token = JSON.parse(localStorage.getItem('authToken'));
+      if (!token) {
+        console.error('No token found');
+        return;
+      }
 
-    onUpdate(updatedData);
-    onClose();
+      const updatedData = {
+        user_id: formData.user_id?.trim(), // or formData.user_id depending on your field
+        full_name: formData.full_name?.trim(),  // Make sure this matches your schema
+        email: formData.email?.trim().toLowerCase(),
+        phone: formData.phone?.trim(),
+        address: formData.address?.trim() || '',
+        childrenCount: formData.childrenCount,
+        ...(formData.password && { password: formData.password })
+      };
+
+      const response = await axios.put(
+        `http://localhost:5000/api/parents/${data._id}`,
+        updatedData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      onUpdate(response.data);
+      onClose();
+    } catch (err) {
+      console.error('Update error:', err.response?.data || err.message);
+      // Set errors based on server response if needed
+      if (err.response?.data?.errors) {
+        setErrors(err.response.data.errors);
+      }
+    }
   };
 
   return (
@@ -129,16 +149,16 @@ function ParentDetails({ data, editable = false, onClose, onUpdate, existingPare
           <div>
             <input
               name="parentId"
-              value={formData.parentId}
+              value={formData.user_id}
               onChange={handleChange}
-              disabled={!editable || (editable && data.parentId)}
+              disabled={!editable || (editable && data.user_id)}
               placeholder="Parent ID *"
               className={`p-2 border rounded w-full ${
-                errors.parentId ? 'border-red-500' : 'border-gray-300'
+                errors.user_id ? 'border-red-500' : 'border-gray-300'
               }`}
             />
-            {errors.parentId && (
-              <p className="text-red-500 text-sm mt-1">{errors.parentId}</p>
+            {errors.user_id && (
+              <p className="text-red-500 text-sm mt-1">{errors.user_id}</p>
             )}
           </div>
 
@@ -169,7 +189,7 @@ function ParentDetails({ data, editable = false, onClose, onUpdate, existingPare
           )}
 
           {/* Other fields (name, email, phone, address) */}
-          {['name', 'email', 'phone', 'address'].map((field) => (
+          {['full_name', 'email', 'phone', 'address'].map((field) => (
             <div key={field}>
               <input
                 name={field}
@@ -177,8 +197,8 @@ function ParentDetails({ data, editable = false, onClose, onUpdate, existingPare
                 onChange={handleChange}
                 disabled={!editable}
                 placeholder={
-                  `${field.charAt(0).toUpperCase() + field.slice(1)} ${
-                    ['name'].includes(field) ? '*' : ''
+                  `Enter ${field.charAt(0).toUpperCase() + field.slice(1)} ${
+                    ['full_name'].includes(field) ? '*' : ''
                   }`
                 }
                 className={`p-2 border rounded w-full ${
