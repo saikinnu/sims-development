@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import Select from 'react-select';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import axios from 'axios';
 
 const eventTypeOptions = [
   { value: 'Academic', label: 'Academic' },
@@ -42,6 +43,7 @@ function AddEvent({ show, onClose, onSave, eventToEdit }) {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
+    console.log('event to me ', eventToEdit);
     if (eventToEdit) {
       setFormData({
         title: eventToEdit.title || '',
@@ -103,18 +105,68 @@ function AddEvent({ show, onClose, onSave, eventToEdit }) {
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
       const eventToSave = {
         ...formData,
         id: eventToEdit ? eventToEdit.id : null,
+        // startDate: formData.startDate ? formData.startDate.toISOString().split('T')[0] : '',
+        // endDate: formData.endDate ? formData.endDate.toISOString().split('T')[0] : null,
         startDate: formData.startDate ? formData.startDate.toISOString().split('T')[0] : '',
         endDate: formData.endDate ? formData.endDate.toISOString().split('T')[0] : null,
         targetAudience: formData.targetAudience,
       };
-      onSave(eventToSave);
-      onClose();
+      // onSave(eventToSave);
+      // onClose();
+    }
+    try {
+      const eventData = {
+        title: formData.title,
+        eventName: formData.eventName,
+        description: formData.description,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        eventType: formData.eventType,
+        targetAudience: formData.targetAudience,
+        status: formData.status
+      };
+      const token = JSON.parse(localStorage.getItem('authToken'));
+      if (eventToEdit) {
+        const response = await axios.put(`http://localhost:5000/api/events/${eventToEdit._id}`, eventData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setFormData({
+          title: response.data.title,
+          description: response.data.description,
+          eventType: response.data.eventType,
+          startDate: new Date(response.data.startDate),
+          endDate: response.data.endDate ? new Date(response.data.endDate) : null,
+          status: response.data.status,
+          eventName: response.data.eventName,
+          targetAudience: response.data.targetAudience,
+        });
+        onSave(formData);
+        onClose();
+      } else {
+        // const token = JSON.parse(localStorage.getItem('authToken'));
+        // Logic for adding a new event
+        const response = await axios.post('http://localhost:5000/api/events/', eventData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          }
+        });
+        console.log();
+      }
+      // const token = JSON.parse(localStorage.getItem('authToken'));
+      // // Logic for adding a new event
+      // const response = await axios.post('http://localhost:5000/api/events/', eventData, {
+      //   headers: {
+      //     Authorization: `Bearer ${token}`,
+      //   }
+      // });
+    } catch (e) {
+      console.log("failed to add event", e);
     }
   };
 

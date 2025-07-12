@@ -1,46 +1,41 @@
 const mongoose = require("mongoose");
 
 const AssignmentSchema = new mongoose.Schema({
-  assignment_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    default: () => new mongoose.Types.ObjectId(),
-    index: true,
-    unique: true,
+  title: {
+    type: String,
+    required: true
   },
-
-  teacher_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Teacher",
-    required: true,
-  },
-
-  subject_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Subject",
-    required: true,
-  },
-
-  class_id: {
+  class: {
+    // type:String,
+    // required:true
     type: mongoose.Schema.Types.ObjectId,
     ref: "Class",
     required: true,
   },
-
-  academic_term: {
-    type: String,
-    required: true,
-    example: "2024-25",
+  subject: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Subject"
   },
-
-  cloudinary_file: {
-    public_id: String,
-    url: String,
-  },
-
-  assigned_at: {
+  dueDate: {
     type: Date,
-    default: Date.now,
+    required: true
   },
+  status: {
+    type: String,
+    enum: ["Pending", "Submitted", "Late"],
+    default:"Pending"
+  },
+  submissions: {
+    type: Number
+  },
+  graded: {
+    type: Number,
+  },
+  description: {
+    type: String,
+    required: true
+  }
+
 });
 
 module.exports = mongoose.model("Assignment", AssignmentSchema);

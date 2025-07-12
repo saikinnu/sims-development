@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
@@ -12,29 +13,23 @@ import {
   Info,
   BadgeInfo,
   UploadCloud,
-  CheckCircle, // Added for success messages or indicators
-  X, // For dismissible alerts
+  CheckCircle,
+  X,
 } from 'lucide-react';
 
 const BankModule = () => {
-  // State to store all bank details
   const [banks, setBanks] = useState([]);
-  // State for the form inputs
   const [currentBank, setCurrentBank] = useState({
     id: null,
     bankName: '',
     accountNumber: '',
     ifscCode: '',
     upiId: '',
-    // qrCodeBase64: null, // Stores Base64 string of the QR code image
-    qrFileName: '' // To display the original file name
+    qrFileName: ''
   });
-  // State for QR code image preview
   const [qrPreview, setQrPreview] = useState(null);
-  // State to manage form visibility (for adding/editing)
   const [showForm, setShowForm] = useState(false);
-  // State for alert messages
-  const [alert, setAlert] = useState({ message: '', type: '' }); // type: 'success' or 'error'
+  const [alert, setAlert] = useState({ message: '', type: '' });
 
   const MAX_BANKS = 5;
 
@@ -42,7 +37,6 @@ const BankModule = () => {
     const fetchBankDetails = async () => {
       const token = JSON.parse(localStorage.getItem('authToken'));
       if (!token) {
-        // Handle case where no token is found, e.g., redirect to login or show error
         console.error('No authentication token found');
         setAlert({ message: 'Authentication required. Please log in.', type: 'error' });
         return;
@@ -51,35 +45,30 @@ const BankModule = () => {
         const res = await axios.get('http://localhost:5000/api/bank/', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        // Assuming the API returns an array of bank objects
-        // If your API returns { data: [...] } then use res.data.data
-        // setBanks(res.data || []); // This line is crucial: update the 'banks' state with the fetched data
         const fetchedData = res.data;
         if (Array.isArray(fetchedData)) {
           setBanks(fetchedData);
         } else if (fetchedData) {
-          setBanks([fetchedData]); // Wrap the single object in an array
+          setBanks([fetchedData]);
         } else {
-          setBanks([]); // No data, set to empty array
+          setBanks([]);
         }
         console.log('Fetched banks:', res.data);
       } catch (e) {
         console.error('Failed to fetch banks:', e);
         setAlert({ message: 'Failed to load bank details.', type: 'error' });
-        setBanks([]); // Reset to empty array on error
+        setBanks([]);
       }
     };
 
     fetchBankDetails();
-  }, []); // Empty dependency array means this runs once on component mount
+  }, []);
 
-  // Handle input changes for the form
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCurrentBank(prev => ({ ...prev, [name]: value }));
   };
 
-  // Handle QR code file input
   const handleQrCodeChange = async (e) => {
     const file = e.target.files[0];
 
@@ -96,13 +85,11 @@ const BankModule = () => {
     uploadFile.append("cloud_name", "duxyycuty");
 
     try {
-      // Simulate Cloudinary upload if not connected to actual Cloudinary
-      // In a real scenario, this would be your actual Cloudinary upload URL
       const response = await axios.post('https://api.cloudinary.com/v1_1/duxyycuty/image/upload', uploadFile);
-      const qrFileUrl = response.data.url; // Cloudinary typically returns 'url' for the uploaded image
+      const qrFileUrl = response.data.url;
       console.log('qrFile URL is :', qrFileUrl);
       setCurrentBank(prev => ({ ...prev, qrFileName: qrFileUrl }));
-      setQrPreview(qrFileUrl); // Set preview to the uploaded image URL
+      setQrPreview(qrFileUrl);
       setAlert({ message: 'QR Code image uploaded successfully!', type: 'success' });
     } catch (error) {
       console.error('Error uploading QR code:', error);
@@ -129,10 +116,11 @@ const BankModule = () => {
     try {
       if (currentBank.id) {
         // Update existing bank
-        // await axios.put(`http://localhost:5000/api/bank/${currentBank.id}`, currentBank, { // Assuming PUT for update
-        //   headers: { Authorization: `Bearer ${token}` }
-        // });
-        // setAlert({ message: 'Bank details updated successfully!', type: 'success' });
+        // Ensure you send the 'currentBank.id' (which is '_id' from MongoDB) for the PUT request
+        await axios.put(`http://localhost:5000/api/bank/${currentBank.id}`, currentBank, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setAlert({ message: 'Bank details updated successfully!', type: 'success' });
       } else {
         // Add new bank
         if (banks.length >= MAX_BANKS) {
@@ -156,29 +144,20 @@ const BankModule = () => {
     }
   };
 
-  // Edit bank
-  const handleEdit = async (id) => {
-    const token = JSON.parse(localStorage.getItem('authToken'));
-    if (!token) {
-      setAlert({ message: 'Authentication required. Please log in.', type: 'error' });
-      return;
-    }
-    try {
-      await axios.put(`http://localhost:5000/api/bank/${id}`, currentBank, { // Assuming PUT for update
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      // setCurrentBank(bank);
-      // setQrPreview(bank.qrFileName); // Set preview from qrFileName
-      // setShowForm(true);
-      // setAlert({ message: '', type: '' }); // Clear any previous alerts
-      setAlert({ message: 'Bank details updated successfully!', type: 'success' });
-    } catch (e) {
-      console.log(e);
-    }
-    // setCurrentBank(bank);
-    // setQrPreview(bank.qrFileName); // Set preview from qrFileName
-    // setShowForm(true);
-    // setAlert({ message: '', type: '' }); // Clear any previous alerts
+  // Populate the form for editing
+  const handleEditClick = (bank) => {
+    // Note: MongoDB uses _id, so map it to 'id' for currentBank state
+    setCurrentBank({
+      id: bank._id, // Set the id for update
+      bankName: bank.bankName,
+      accountNumber: bank.accountNumber,
+      ifscCode: bank.ifscCode,
+      upiId: bank.upiId,
+      qrFileName: bank.qrFileName
+    });
+    setQrPreview(bank.qrFileName); // Set preview from qrFileName
+    setShowForm(true);
+    setAlert({ message: '', type: '' }); // Clear any previous alerts
   };
 
   // Delete bank
@@ -193,8 +172,8 @@ const BankModule = () => {
         await axios.delete(`http://localhost:5000/api/bank/${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setBanks(banks.filter(bank => bank.id !== id));
-        if (currentBank.id === id) {
+        setBanks(banks.filter(bank => bank._id !== id)); // Filter by _id
+        if (currentBank.id === id) { // If the deleted bank was being edited
           resetForm();
         }
         setAlert({ message: 'Bank record deleted successfully!', type: 'success' });
@@ -213,7 +192,7 @@ const BankModule = () => {
       accountNumber: '',
       ifscCode: '',
       upiId: '',
-      qrFileName: '' // Reset qrFileName
+      qrFileName: ''
     });
     setQrPreview(null);
     setShowForm(false);
@@ -256,7 +235,7 @@ const BankModule = () => {
       <div className="mb-6">
         {!showForm && (
           <button
-            onClick={() => { setShowForm(true); setAlert({ message: '', type: '' }); }}
+            onClick={() => { resetForm(); setShowForm(true); setAlert({ message: '', type: '' }); }}
             disabled={banks.length >= MAX_BANKS}
             className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 disabled:opacity-60 disabled:cursor-not-allowed transition transform hover:-translate-y-0.5"
           >
@@ -373,13 +352,13 @@ const BankModule = () => {
       {/* List of Added Banks */}
       <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-gray-200">
         <h2 className="text-2xl font-bold mb-6 text-gray-900">Existing Banks</h2>
-        {/* Corrected: Iterate over 'banks' state, not 'currentBank' */}
         {banks.length === 0 ? (
           <p className="text-gray-500 text-center py-4">No banks added yet. Click "Add New Bank" to get started.</p>
         ) : (
           <ul className="space-y-4">
             {banks.map((bank) => (
-              <li key={bank.id} className="border border-gray-200 rounded-lg p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 hover:shadow-lg transition-shadow duration-200">
+              // Use bank._id for the key as it's the unique identifier from MongoDB
+              <li key={bank._id} className="border border-gray-200 rounded-lg p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 hover:shadow-lg transition-shadow duration-200">
                 <div className="flex-grow mb-4 sm:mb-0">
                   <h3 className="text-lg font-semibold text-gray-900 flex items-center mb-1">
                     <Building size={20} className="mr-2 text-indigo-600" />
@@ -396,7 +375,7 @@ const BankModule = () => {
                 </div>
                 <div className="flex space-x-2 mt-3 sm:mt-0">
                   <button
-                    onClick={() => handleEdit(bank._id)}
+                    onClick={() => handleEditClick(bank)} // Pass the entire bank object
                     className="p-2.5 rounded-full text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
                     title="Edit Bank"
                   >

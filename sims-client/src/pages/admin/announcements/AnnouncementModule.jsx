@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Edit, Trash, Plus, Filter, X, Search } from "lucide-react";
 import { FaBullhorn } from "react-icons/fa";
 import Select from "react-select";
 import AddAnnouncement from "./AddAnnouncement";
 import AnnouncementDetails from "./AnnouncementDetails";
 import { useAnnouncements } from "./AnnouncementProvider";
+import axios from 'axios';
 
 function AnnouncementsModule() {
   // Use the useAnnouncements hook to get announcements and handlers
@@ -19,6 +20,7 @@ function AnnouncementsModule() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [displayAnnouncement, setDisplayAnnouncement] = useState([]);
   const [filters, setFilters] = useState({
     searchQuery: "",
     status: null,
@@ -61,6 +63,23 @@ function AnnouncementsModule() {
       return false;
     return true;
   });
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      try {
+        const token = JSON.parse(localStorage.getItem('authToken'));
+        const response = await axios.get('http://localhost:5000/api/announcements/', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        console.log('fetch data ',response.data);
+        setDisplayAnnouncement(response.data);
+        // handleAddAnnouncement(response.data);
+      } catch (error) {
+        console.error('Error fetching announcements:', error);
+      }
+    };
+
+    fetchAnnouncements();
+  }, []);
 
   // Handler functions (no change, but they will now call the context's functions)
   const handleFilterChange = (name, value) => {
@@ -81,11 +100,19 @@ function AnnouncementsModule() {
     setShowDetailsModal(true);
   };
 
-  const handleDeleteClick = (id) => {
+  const handleDeleteClick = async(id) => {
     // Replaced window.confirm with a custom modal/dialog in a real app
     // For this example, we'll keep it as is, but note the instruction to avoid alert/confirm.
     if (window.confirm("Are you sure you want to delete this announcement?")) {
-      handleDeleteAnnouncement(id); // Use context handler
+      try {
+        const token = JSON.parse(localStorage.getItem('authToken'));
+        await axios.delete(`http://localhost:5000/api/announcements/${id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        handleDeleteAnnouncement(id); // Use context handler
+      } catch (error) {
+        console.error('Error deleting announcement:', error);
+      }
     }
   };
 
@@ -134,23 +161,22 @@ function AnnouncementsModule() {
 
         {/* Buttons */}
         <div className="flex gap-2">
-            {/* Mobile Search Button */}
-            <button
-              className='md:hidden flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-md text-sm'
-              onClick={() => setShowMobileSearch(!showMobileSearch)} // Toggle mobile search visibility
-            >
-              <Search size={16} />
-              Search
-            </button>
+          {/* Mobile Search Button */}
+          <button
+            className='md:hidden flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-md text-sm'
+            onClick={() => setShowMobileSearch(!showMobileSearch)} // Toggle mobile search visibility
+          >
+            <Search size={16} />
+            Search
+          </button>
 
           {/* Filters Button */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1 px-3 py-2 rounded-md text-sm ${
-              showFilters || activeFilterCount > 0
+            className={`flex items-center gap-1 px-3 py-2 rounded-md text-sm ${showFilters || activeFilterCount > 0
                 ? "bg-blue-100 text-blue-600"
                 : "bg-gray-100"
-            }`}
+              }`}
           >
             {showFilters ? <X size={16} /> : <Filter size={16} />}
             <span className="hidden md:inline">Filters</span>{" "}
@@ -284,8 +310,8 @@ function AnnouncementsModule() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredAnnouncements.length > 0 ? (
-                filteredAnnouncements.map((announcement) => (
+              {displayAnnouncement.length > 0 ? (
+                displayAnnouncement.map((announcement) => (
                   <tr key={announcement.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {announcement.title}
@@ -307,13 +333,12 @@ function AnnouncementsModule() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          announcement.status === "active"
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${announcement.status === "active"
                             ? "bg-green-100 text-green-800"
                             : announcement.status === "draft"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
                       >
                         {announcement.status}
                       </span>
@@ -349,7 +374,7 @@ function AnnouncementsModule() {
                           <Edit size={16} />
                         </button>
                         <button
-                          onClick={() => handleDeleteClick(announcement.id)}
+                          onClick={() => handleDeleteClick(announcement._id)}
                           className="text-red-600 hover:text-red-900 p-1 rounded-md hover:bg-red-50"
                           title="Delete"
                         >
@@ -395,7 +420,7 @@ function AnnouncementsModule() {
       {showAddModal && (
         <AddAnnouncement
           onClose={() => setShowAddModal(false)}
-          // onSave is removed as AddAnnouncement will use context directly
+        // onSave is removed as AddAnnouncement will use context directly
         />
       )}
       {showDetailsModal && (
@@ -403,7 +428,7 @@ function AnnouncementsModule() {
           onClose={() => setShowDetailsModal(false)}
           data={selectedAnnouncement}
           editable={isEditMode}
-          // onUpdate is removed as AnnouncementDetails will use context directly
+        // onUpdate is removed as AnnouncementDetails will use context directly
         />
       )}
     </div>

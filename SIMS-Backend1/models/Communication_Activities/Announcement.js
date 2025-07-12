@@ -9,27 +9,23 @@ const AnnouncementSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  author_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
-  publish_date: {
-    type: Date,
-    default: Date.now,
-  },
-  expiry_date: {
+  target: [{
+    type:String,
+    enum: ['All', 'Teachers', 'Students', 'Parents', 'Staff'],
+    default:'All',
+  }],
+  startDate: {
     type: Date,
     required: true,
   },
-  target_role: {
-    type: String,
-    enum: ['All', 'Students', 'Teachers', 'Parents'],
-    default: 'All',
+  endDate: {
+    type: Date,
+    required: true,
   },
-  media: {
-    public_id: String,
-    url: String,
+  status: {
+    type: String, 
+    enum: ["active","draft"],
+    default: "active"
   },
 });
 

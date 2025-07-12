@@ -2,39 +2,55 @@ import React, { useState } from 'react';
 import Select from 'react-select';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import axios from 'axios';
 import { useAnnouncements } from './AnnouncementProvider'; // Import the hook
 
 const targetOptions = [
-  { value: 'all', label: 'All' },
-  { value: 'students', label: 'Students' },
-  { value: 'teachers', label: 'Teachers' },
-  { value: 'parents', label: 'Parents' },
-  { value: 'staff', label: 'Staff' }
+  { value: 'All', label: 'All' },
+  { value: 'Students', label: 'Students' },
+  { value: 'Teachers', label: 'Teachers' },
+  { value: 'Parents', label: 'Parents' },
+  { value: 'Staff', label: 'Staff' }
 ];
 
 function AnnouncementDetails({ data, editable = false, onClose }) { // Remove onUpdate prop
   const { handleUpdateAnnouncement } = useAnnouncements(); // Get handler from context
 
+  console.log('announcement data ', data);
   const [formData, setFormData] = useState({
-    ...data,
-    target: [],
-    startDate: new Date(data.startDate),
-    endDate: new Date(data.endDate)
+    // ...data,
+    // target: [],
+    // startDate: new Date(data.startDate),
+    // endDate: new Date(data.endDate)
+    title: data.title,
+    content: data.content,
+    target: data.target,
+    startDate: data.startDate,
+    endDate: data.endDate,
+    status: data.status
   });
 
   const [errors, setErrors] = useState({});
+
 
   // Initialize form data
   React.useEffect(() => {
     if (data) {
       setFormData({
-        ...data,
+        // ...data,
+        // target: data.target.map(t => targetOptions.find(option => option.value === t)),
+        // startDate: new Date(data.startDate),
+        // endDate: new Date(data.endDate)
+        title: data.title,
+        content: data.content,
         target: data.target.map(t => targetOptions.find(option => option.value === t)),
         startDate: new Date(data.startDate),
-        endDate: new Date(data.endDate)
+        endDate: new Date(data.endDate),
+        status: data.status
       });
     }
   }, [data]);
+  console.log('form data ', formData.target);
 
   const validateForm = () => {
     const newErrors = {};
@@ -60,18 +76,32 @@ function AnnouncementDetails({ data, editable = false, onClose }) { // Remove on
     setErrors(prev => ({ ...prev, target: '' }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async() => {
     if (!validateForm()) return;
 
-    const updatedAnnouncement = {
-      ...formData,
-      target: formData.target.map(t => t.value),
-      startDate: formData.startDate.toISOString().split('T')[0],
-      endDate: formData.endDate.toISOString().split('T')[0]
-    };
-
-    handleUpdateAnnouncement(updatedAnnouncement); // Use context handler
-    onClose();
+    try {
+      const token = JSON.parse(localStorage.getItem('authToken'));
+      const updatedAnnouncement = {
+        // ...formData,
+        // target: formData.target.map(t => t.value),
+        // startDate: formData.startDate.toISOString().split('T')[0],
+        // endDate: formData.endDate.toISOString().split('T')[0]
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        target: formData.target.map(t => t.value),
+        startDate: formData.startDate.toISOString().split('T')[0],
+        endDate: formData.endDate.toISOString().split('T')[0],
+        status: formData.status,
+      };
+  
+      await axios.put(`http://localhost:5000/api/announcements/${data._id}`, updatedAnnouncement,{
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      handleUpdateAnnouncement(updatedAnnouncement); // Use context handler
+      onClose();
+    } catch (error) {
+      console.error('Error updating announcement:', error);
+    }
   };
 
   return (

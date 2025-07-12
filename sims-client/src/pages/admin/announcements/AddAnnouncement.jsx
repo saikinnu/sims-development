@@ -3,13 +3,14 @@ import Select from 'react-select';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { useAnnouncements } from './AnnouncementProvider'; // Import the hook
+import axios from 'axios'
 
 const targetOptions = [
-  { value: 'all', label: 'All' },
-  { value: 'students', label: 'Students' },
-  { value: 'teachers', label: 'Teachers' },
-  { value: 'parents', label: 'Parents' },
-  { value: 'staff', label: 'Staff' }
+  { value: 'All', label: 'All' },
+  { value: 'Students', label: 'Students' },
+  { value: 'Teachers', label: 'Teachers' },
+  { value: 'Parents', label: 'Parents' },
+  { value: 'Staff', label: 'Staff' }
 ];
 
 function AddAnnouncement({ onClose }) { // Remove onSave prop
@@ -50,22 +51,40 @@ function AddAnnouncement({ onClose }) { // Remove onSave prop
     setErrors(prev => ({ ...prev, target: '' }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async() => {
     if (!validateForm()) return;
 
-    const newAnnouncement = {
-      id: `ann-${Date.now()}`,
-      title: formData.title.trim(),
-      content: formData.content.trim(),
-      target: formData.target.map(t => t.value),
-      startDate: formData.startDate.toISOString().split('T')[0],
-      endDate: formData.endDate.toISOString().split('T')[0],
-      status: formData.status,
-      createdAt: new Date().toISOString()
-    };
+    try{
+      const token = JSON.parse(localStorage.getItem('authToken'));
+      const response = await axios.post('http://localhost:5000/api/announcements/', {
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        target: formData.target.map(t => t.value),
+        startDate: formData.startDate.toISOString().split('T')[0],
+        endDate: formData.endDate.toISOString().split('T')[0],
+        status: formData.status,
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      handleAddAnnouncement(response.data); // Use context handler
+      onClose();
+    }catch(e){
+      console.log('failed to add announcement ',e)
+    }
 
-    handleAddAnnouncement(newAnnouncement); // Use context handler
-    onClose();
+    // const newAnnouncement = {
+    //   id: `ann-${Date.now()}`,
+    //   title: formData.title.trim(),
+    //   content: formData.content.trim(),
+    //   target: formData.target.map(t => t.value),
+    //   startDate: formData.startDate.toISOString().split('T')[0],
+    //   endDate: formData.endDate.toISOString().split('T')[0],
+    //   status: formData.status,
+    //   createdAt: new Date().toISOString()
+    // };
+
+    // handleAddAnnouncement(newAnnouncement); // Use context handler
+    // onClose();
   };
 
   return (

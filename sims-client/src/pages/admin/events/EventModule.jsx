@@ -1,38 +1,55 @@
+
 import React, { useState, useEffect } from 'react';
 import { PlusCircle, Calendar as CalendarIcon, Edit, Trash2, Info } from 'lucide-react';
 import Calendar from './Calendar';
 import AddEvent from './AddEvent';
 import EventDetails from './EventDetails';
+import axios from 'axios'; // Import axios
 
 const EventModule = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(null);
     const [allEvents, setAllEvents] = useState([
-        { 
-            id: 1, 
-            title: 'Project Deadline', 
-            eventName: 'History Project Submission',
-            description: 'Final submission for History project', 
-            startDate: '2025-06-25', 
-            endDate: '2025-06-25', 
-            eventType: ['Academic'], 
-            targetAudience: ['Students'], 
-            status: 'upcoming',
-            color: '#3B82F6' 
-        },
-        { 
-            id: 2, 
-            title: 'Team Meeting', 
-            eventName: 'Q3 Planning Session',
-            description: 'Discussion on Q3 planning', 
-            startDate: '2025-06-28', 
-            endDate: '2025-06-28', 
-            eventType: ['Meeting'], 
-            targetAudience: ['Teachers'], 
-            status: 'upcoming',
-            color: '#3B82F6' 
-        }
+        // {
+        //     id: 1,
+        //     title: 'Project Deadline',
+        //     eventName: 'History Project Submission',
+        //     description: 'Final submission for History project',
+        //     startDate: '2025-06-25',
+        //     endDate: '2025-06-25',
+        //     eventType: ['Academic'],
+        //     targetAudience: ['Students'],
+        //     status: 'upcoming',
+        //     color: '#3B82F6'
+        // },
+        // {
+        //     id: 2,
+        //     title: 'Team Meeting',
+        //     eventName: 'Q3 Planning Session',
+        //     description: 'Discussion on Q3 planning',
+        //     startDate: '2025-06-28',
+        //     endDate: '2025-06-28',
+        //     eventType: ['Meeting'],
+        //     targetAudience: ['Teachers'],
+        //     status: 'upcoming',
+        //     color: '#3B82F6'
+        // }
     ]);
+    useEffect(() => {
+
+        const fetchEvent = async () => {
+            const token = JSON.parse(localStorage.getItem('authToken'));
+            try {
+                const respronse = await axios.get('http://localhost:5000/api/events/', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setAllEvents(respronse.data)
+            } catch (e) {
+                console.log('faild to fetch events', e);
+            }
+        }
+        fetchEvent();
+    }, [])
 
     const [showAddEditModal, setShowAddEditModal] = useState(false);
     const [editingEvent, setEditingEvent] = useState(null);
@@ -52,30 +69,67 @@ const EventModule = () => {
         );
     });
 
-    const handleSaveEvent = (newEvent) => {
-        if (editingEvent) {
-            setAllEvents(prevEvents => prevEvents.map(evt =>
-                evt.id === newEvent.id ? { 
-                    ...newEvent,
-                    color: evt.color
-                } : evt
-            ));
-        } else {
-            const newId = Math.max(...allEvents.map(e => e.id), 0) + 1;
-            setAllEvents(prevEvents => [...prevEvents, { 
-                ...newEvent, 
-                id: newId,
-                color: '#3B82F6'
-            }]);
+    const handleSaveEvent = async (newEvent) => { // Made async
+        try {
+            console.log(newEvent.id);
+            if (editingEvent) {
+                // try {
+                //     const token = JSON.parse(localStorage.getItem('authToken'));
+                //     const response = await axios.put(`http://localhost:5000/api/events/${newEvent.id}`, newEvent, {
+                //         headers: { Authorization: `Bearer ${token}` }
+                //     });
+                //     console.log('put data', response.data);
+                //     // setAllEvents(response.data)
+                //     setAllEvents(prevEvents => prevEvents.map(evt =>
+                //         evt.id === newEvent.id ? response.data : evt // Update with the response data
+                //     ));
+                // } catch (e) {
+                //     console.log('failed to update', e);
+                // }
+                // Logic for editing an existing event (will use axios.put)
+                // For now, let's assume it updates locally, or you'd add an API call here for PUT
+                // setAllEvents(prevEvents => prevEvents.map(evt =>
+                //     evt.id === newEvent.id ? {
+                //         ...newEvent,
+                //         color: evt.color
+                //     } : evt
+                // ));
+            } else {
+                console.log('edit function is ok');
+            }
+            setEditingEvent(null);
+            setShowAddEditModal(false);
+        } catch (error) {
+            console.error('Error saving event:', error);
+            // Handle error (e.g., show an error message to the user)
         }
-        setEditingEvent(null);
-        setShowAddEditModal(false);
     };
 
-    const handleDeleteEvent = (id) => {
+    const handleDeleteEvent = async (id) => {
+        if(window.confirm('Are you sure you want to delete?')){
+            try {
+            const token = JSON.parse(localStorage.getItem('authToken'));
+            await axios.delete(`http://localhost:5000/api/events/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        } catch (e) {
+            console.log('failed to delete event', e);
+        }
         setAllEvents(prevEvents => prevEvents.filter(evt => evt.id !== id));
         setSelectedEventDetails(null);
         setShowDetailsModal(false);
+        }
+        // try {
+        //     const token = JSON.parse(localStorage.getItem('authToken'));
+        //     await axios.delete(`http://localhost:5000/api/events/${id}`, {
+        //         headers: { Authorization: `Bearer ${token}` }
+        //     });
+        // } catch (e) {
+        //     console.log('failed to delete event', e);
+        // }
+        // setAllEvents(prevEvents => prevEvents.filter(evt => evt.id !== id));
+        // setSelectedEventDetails(null);
+        // setShowDetailsModal(false);
     };
 
     const openAddEventModal = () => {
@@ -84,6 +138,7 @@ const EventModule = () => {
     };
 
     const openEditEventModal = (event) => {
+        console.log('edit is triggered',event);
         setEditingEvent(event);
         setShowDetailsModal(false);
         setShowAddEditModal(true);
@@ -103,12 +158,12 @@ const EventModule = () => {
     };
 
     return (
-    <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
+        <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
             <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-                        <CalendarIcon size={32} className="text-indigo-600" />
-                        Event Calendar
-                    </h1>
+                <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
+                    <CalendarIcon size={32} className="text-indigo-600" />
+                    Event Calendar
+                </h1>
                 <button
                     onClick={openAddEventModal}
                     className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -175,7 +230,7 @@ const EventModule = () => {
                 <h2 className="text-lg font-semibold text-gray-800 mb-4">All Events</h2>
                 {allEvents.length > 0 ? (
                     <ul className="divide-y divide-gray-200">
-                        {allEvents.sort((a,b) => new Date(a.startDate) - new Date(b.startDate)).map(event => (
+                        {allEvents.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)).map(event => (
                             <li key={event.id} className="py-3 flex justify-between items-center">
                                 <div>
                                     <p className="font-medium text-gray-900">{event.title}</p>
@@ -203,7 +258,7 @@ const EventModule = () => {
                                         <Edit size={18} />
                                     </button>
                                     <button
-                                        onClick={() => handleDeleteEvent(event.id)}
+                                        onClick={() => handleDeleteEvent(event._id)}
                                         className="p-1 rounded-full text-red-600 hover:bg-red-100"
                                         title="Delete event"
                                     >

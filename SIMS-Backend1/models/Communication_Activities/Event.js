@@ -1,36 +1,39 @@
 const mongoose = require("mongoose");
 
 const EventSchema = new mongoose.Schema({
-  event_name: {
+  title: {
     type: String,
     required: true,
+  },
+  eventName: {
+    type: String,
   },
   description: {
     type: String,
+    required: true,
   },
-  event_date: {
+  startDate: {
     type: Date,
     required: true,
   },
-  start_time: {
+  endDate: {
+    type: Date,
+    required: true,
+  },
+  eventType: [{
     type: String,
-    required: true,
-  },
-  end_time: {
-    type: String,
-    required: true,
-  },
-  location: {
-    type: String,
-    required: true,
-  },
-  organizer_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User", // assumes you have a User model
-    required: true,
-  },
-  event_image: {
-    type: String, // Cloudinary URL
+    enum: ['Academic', 'Sport', 'Cultural', 'Meeting', 'Other'],
+    default:'Other',
+  }],
+  targetAudience: [{
+    type:String,
+    enum: ['All', 'Teachers', 'Students', 'Parents', 'Staff'],
+    default:'All',
+  }],
+  status: {
+    type: String, 
+    enum: ["upcoming", "ongoing","completed","cancelled"],
+    default: "upcoming"
   },
 }, { timestamps: true });
 

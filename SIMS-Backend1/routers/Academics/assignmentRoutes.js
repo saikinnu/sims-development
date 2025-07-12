@@ -8,7 +8,7 @@ const { uploadAssignmentFile } = require('../../middlewares/upload');
 router.post(
   '/',
   protect,
-  checkRole('teacher'),
+  checkRole('teacher', 'admin'),
   uploadAssignmentFile.single('file'),
   assignmentController.createAssignment
 );

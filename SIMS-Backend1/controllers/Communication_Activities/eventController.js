@@ -2,13 +2,22 @@ const Event = require('../../models/Communication_Activities/Event');
 
 // 📅 Create new event
 exports.createEvent = async (req, res) => {
+
   try {
+    const {title,eventName,description,startDate,endDate,eventType,targetAudience,status} = req.body;
     const event = await Event.create({
-      ...req.body,
-      organizer_id: req.user._id, // Injected by protect middleware
+      title,
+      eventName,
+      description,
+      startDate,
+      endDate,
+      eventType,
+      targetAudience,
+      status
     });
     res.status(201).json(event);
   } catch (error) {
+    console.log('not working fine');
     res.status(400).json({ message: error.message });
   }
 };

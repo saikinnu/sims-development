@@ -15,16 +15,16 @@ export const useAnnouncements = () => {
 
 const AnnouncementProvider = ({ children }) => {
   const [announcements, setAnnouncements] = useState([
-    {
-      id: 'ann-001',
-      title: 'School Reopening on Monday!',
-      content: 'Exciting news! School will reopen on June 24th after the short break. We look forward to seeing everyone back on campus, ready for a productive second half of the term.',
-      target: ['all'],
-      startDate: '2025-06-19', // Today
-      endDate: '2025-06-23', // Still active
-      status: 'active',
-      createdAt: '2025-06-18T10:30:00Z'
-    }
+    // {
+    //   id: 'ann-001',
+    //   title: 'School Reopening on Monday!',
+    //   content: 'Exciting news! School will reopen on June 24th after the short break. We look forward to seeing everyone back on campus, ready for a productive second half of the term.',
+    //   target: ['all'],
+    //   startDate: '2025-06-19', // Today
+    //   endDate: '2025-06-23', // Still active
+    //   status: 'active',
+    //   createdAt: '2025-06-18T10:30:00Z'
+    // }
   ]);
 
   const handleAddAnnouncement = (newAnn) => {

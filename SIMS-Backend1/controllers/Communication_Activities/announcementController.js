@@ -3,13 +3,19 @@ const Announcement = require('../../models/Communication_Activities/Announcement
 // 📢 Create a new announcement
 exports.createAnnouncement = async (req, res) => {
   try {
+    const { title, content, target, startDate, endDate, status } = req.body;
     const announcement = await Announcement.create({
-      ...req.body,
-      author_id: req.user._id, // Injected from protect middleware
+      title,
+      content,
+      target,
+      startDate,
+      endDate,
+      status
     });
     res.status(201).json(announcement);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+  } catch (error) {
+    console.log('not working fine');
+    res.status(400).json({ message: error.message });
   }
 };
 
@@ -18,21 +24,23 @@ exports.getAnnouncements = async (req, res) => {
   try {
     const role = req.user.role;
     const now = new Date();
+    const announcements = await Announcement.find().sort({ publish_date: -1 });
 
-    const announcements = await Announcement.find({
-      $and: [
-        {
-          $or: [
-            { target_role: 'All' },
-            { target_role: role === 'student' ? 'Students' : role === 'teacher' ? 'Teachers' : role === 'parent' ? 'Parents' : 'All' }
-          ]
-        },
-        { expiry_date: { $gte: now } }
-      ]
-    }).sort({ publish_date: -1 });
+    // const announcements = await Announcement.find({
+    //   $and: [
+    //     {
+    //       $or: [
+    //         { target: 'All' },
+    //         { target: role === 'Student' ? 'Students' : role === 'Teacher' ? 'Teachers' : role === 'Parent' ? 'Parents' : 'All' }
+    //       ]
+    //     },
+    //     { expiry_date: { $gte: now } }
+    //   ]
+    // }).sort({ publish_date: -1 });
 
     res.json(announcements);
   } catch (err) {
+    console.log('announcements not working fine');
     res.status(500).json({ message: err.message });
   }
 };
