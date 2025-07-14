@@ -1,5 +1,6 @@
 // SchedulesModule.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import RegularScheduleViewStudent from './RegularScheduleViewStudent';
 import ExamScheduleViewTeacher from '../../teacher/schedules/ExamScheduleViewTeacher';
 import { CalendarDays } from 'lucide-react'; // Assuming you're using lucide-react for icons
@@ -13,27 +14,58 @@ const SchedulesModule = () => {
 
   // In-memory state for ALL teachers' regular schedules.
   // The student view will filter this based on currentStudentClasses.
-  const [allTeachersRegularSchedules] = useState([
-    // Mock Data for demonstration from various teachers and classes
-    { id: 'trs1', teacherId: 'teacher_T123', dayOfWeek: 'Monday', startTime: '09:00', endTime: '09:45', subject: 'Mathematics', classId: 'Class 1' },
-    { id: 'trs2', teacherId: 'teacher_T123', dayOfWeek: 'Monday', startTime: '10:00', endTime: '10:45', subject: 'Science', classId: 'Class 2' },
-    { id: 'trs3', teacherId: 'teacher_T123', dayOfWeek: 'Tuesday', startTime: '11:00', endTime: '11:45', subject: 'English', classId: 'Class 1' },
-    { id: 'trs4', teacherId: 'teacher_T124', dayOfWeek: 'Wednesday', startTime: '09:00', endTime: '09:45', subject: 'Physics', classId: 'Class 10' },
-    { id: 'trs5', teacherId: 'teacher_T125', dayOfWeek: 'Monday', startTime: '08:00', endTime: '08:45', subject: 'History', classId: 'Class 3' },
-    { id: 'trs6', teacherId: 'teacher_T126', dayOfWeek: 'Thursday', startTime: '13:00', endTime: '13:45', subject: 'Chemistry', classId: 'Class 5' },
-    { id: 'trs7', teacherId: 'teacher_T123', dayOfWeek: 'Friday', startTime: '15:00', endTime: '15:45', subject: 'Art', classId: 'Class 1' },
-  ]);
+  const [allTeachersRegularSchedules, setAllTeachersRegularSchedules] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const token = JSON.parse(localStorage.getItem('authToken'));
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    if (activeTab === "Regular Schedule") {
+      setLoading(true);
+      setError(null);
+      axios.get('http://localhost:5000/api/teacher/schedules/', { headers })
+        .then(res => {
+          setAllTeachersRegularSchedules(res.data);
+          setLoading(false);
+        })
+        .catch(err => {
+          setError('Failed to fetch schedules');
+          setLoading(false);
+        });
+    }
+    if (activeTab === "Exam Schedule") {
+      setLoading(true);
+      setError(null);
+      axios.get('http://localhost:5000/api/exam-schedule/', { headers, withCredentials: true })
+        .then(res => {
+          if (res.data.success) {
+            // Flatten subjectSlots for student view
+            const flat = res.data.data.flatMap(sch =>
+              sch.subjectSlots.map(slot => ({
+                id: sch._id,
+                classId: sch.classId,
+                examType: sch.examType,
+                date: slot.date,
+                time: slot.time,
+                subject: slot.subject
+              }))
+            );
+            setAdminExamSchedules(flat);
+          } else {
+            setAdminExamSchedules([]);
+          }
+          setLoading(false);
+        })
+        .catch(() => {
+          setError('Failed to fetch exam schedules');
+          setLoading(false);
+        });
+    }
+  }, [activeTab]);
 
   // In-memory state for admin-provided exam schedules (read-only for students)
-  const [adminExamSchedules, setAdminExamSchedules] = useState([
-    // Mock Data for demonstration (consistent with Admin's data structure)
-    { id: 'adm_exam1', classId: 'Class 1', examType: 'Formative Assessment 1', date: '2025-07-10', time: '09:00', subject: 'Mathematics' },
-    { id: 'adm_exam2', classId: 'Class 1', examType: 'Formative Assessment 2', date: '2025-07-15', time: '11:00', subject: 'English' },
-    { id: 'adm_exam3', classId: 'Class 2', examType: 'Summative Assessment 1', date: '2025-07-20', time: '10:30', subject: 'Science' },
-    { id: 'adm_exam4', classId: 'Class 3', examType: 'Formative Assessment 1', date: '2025-07-22', time: '09:30', subject: 'History' },
-    { id: 'adm_exam5', classId: 'Class 5', examType: 'Summative Assessment 1', date: '2025-08-01', time: '13:00', subject: 'Physics' },
-    { id: 'adm_exam6', classId: 'Class 3', examType: 'Summative Assessment 2', date: '2025-08-05', time: '11:00', subject: 'Geography' },
-  ]);
+  const [adminExamSchedules, setAdminExamSchedules] = useState([]);
 
   return (
     <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
@@ -64,15 +96,27 @@ const SchedulesModule = () => {
       {/* Tab Content Area */}
       <div className="bg-white rounded-lg shadow p-6 min-h-[400px]">
         {activeTab === "Regular Schedule" && (
-          <RegularScheduleViewStudent
-            allTeachersRegularSchedules={allTeachersRegularSchedules}
-            currentStudentClasses={currentStudentClasses} // Pass student's enrolled classes
-          />
+          loading ? (
+            <div className="text-center text-gray-500">Loading...</div>
+          ) : error ? (
+            <div className="text-center text-red-500">{error}</div>
+          ) : (
+            <RegularScheduleViewStudent
+              allTeachersRegularSchedules={allTeachersRegularSchedules}
+              currentStudentClasses={currentStudentClasses}
+            />
+          )
         )}
         {activeTab === "Exam Schedule" && (
-          <ExamScheduleViewTeacher // Reusing the teacher's read-only exam view
-            adminExamSchedules={adminExamSchedules}
-          />
+          loading ? (
+            <div className="text-center text-gray-500">Loading...</div>
+          ) : error ? (
+            <div className="text-center text-red-500">{error}</div>
+          ) : (
+            <ExamScheduleViewTeacher
+              adminExamSchedules={adminExamSchedules}
+            />
+          )
         )}
       </div>
     </div>

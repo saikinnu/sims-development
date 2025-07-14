@@ -1,32 +1,61 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, CheckCircle, Clock, LayoutList, FileText, Hourglass, CheckSquare } from 'lucide-react'; // Consolidated to Lucide icons
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
+const API_BASE = 'http://localhost:5000/api';
 
 const AssignmentModule = () => {
   const navigate = useNavigate();
 
-  const classes = [
-    { id: 'math101', name: 'Mathematics 101' },
-    { id: 'science201', name: 'Science 201' }
-  ];
+  // State for assignments and classes
+  const [assignments, setAssignments] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const assignments = [
-    { id: 1, title: 'Algebra Worksheet', class: 'math101', dueDate: '2025-06-15', status: 'pending', totalStudents: 25 },
-    { id: 2, title: 'Chemistry Lab Report', class: 'science201', dueDate: '2025-07-28', status: 'pending', totalStudents: 30 },
-    { id: 3, title: 'Geometry Quiz', class: 'math101', dueDate: '2025-06-08', status: 'completed', totalStudents: 25 },
-    { id: 4, title: 'Biology Project', class: 'science201', dueDate: '2025-06-01', status: 'completed', totalStudents: 30 }
-  ];
+  // Fetch assignments and classes on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = JSON.parse(localStorage.getItem('authToken'));
+        // Fetch assignments
+        const assignmentsRes = await axios.get(`${API_BASE}/assignments`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setAssignments(Array.isArray(assignmentsRes.data) ? assignmentsRes.data : (assignmentsRes.data.assignments || []));
+        // Fetch classes
+        const classesRes = await axios.get(`${API_BASE}/classes`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setClasses(Array.isArray(classesRes.data) ? classesRes.data : (classesRes.data.classes || []));
+      } catch (err) {
+        setError('Failed to load assignments or classes.');
+      }
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
 
-  const handleUploadClick = (assignmentId) => {
-    // In a real application, this would navigate to a submission page.
-    // For this mock, we'll just log it.
-    console.log(`Navigating to submit assignment: ${assignmentId}`);
-    // navigate(`/student/submit-assignment/${assignmentId}`); // Uncomment if you have this route
+  // Helper to get class name by id or object
+  const getClassName = (classObj) => {
+    if (!classObj) return '';
+    if (typeof classObj === 'string') {
+      const found = classes.find(c => c._id === classObj);
+      return found ? found.class_name : classObj;
+    }
+    return classObj.class_name || '';
   };
 
+  // Status display logic
   const getStatusDisplay = (assignment) => {
-    const isCompleted = assignment.status === 'completed';
-    const isOverdue = !isCompleted && new Date(assignment.dueDate) < new Date();
+    const status = assignment.status;
+    const dueDate = new Date(assignment.dueDate);
+    const now = new Date();
+    const isCompleted = status === 'Submitted';
+    const isOverdue = status === 'Pending' && dueDate < now;
 
     if (isCompleted) {
       return (
@@ -34,7 +63,7 @@ const AssignmentModule = () => {
           <CheckCircle size={14} className="mr-1" /> Submitted
         </span>
       );
-    } else if (isOverdue) {
+    } else if (isOverdue || status === 'Late') {
       return (
         <span className="inline-flex items-center font-semibold text-red-600 px-3 py-1 rounded-full bg-red-100 text-xs">
           <Clock size={14} className="mr-1" /> Overdue
@@ -43,7 +72,7 @@ const AssignmentModule = () => {
     } else {
       return (
         <button
-          onClick={() => handleUploadClick(assignment.id)}
+          onClick={() => handleUploadClick(assignment._id)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full flex items-center text-sm font-medium shadow-md transition-all duration-200 hover:scale-105"
           aria-label={`Upload assignment for ${assignment.title}`}
         >
@@ -53,9 +82,22 @@ const AssignmentModule = () => {
     }
   };
 
+  // Upload click handler
+  const handleUploadClick = (assignmentId) => {
+    navigate(`/student/submit-assignment/${assignmentId}`);
+  };
+
+  // Stats
   const totalAssignments = assignments.length;
-  const pendingAssignments = assignments.filter(a => a.status === 'pending').length;
-  const completedAssignments = assignments.filter(a => a.status === 'completed').length;
+  const pendingAssignments = assignments.filter(a => a.status === 'Pending').length;
+  const completedAssignments = assignments.filter(a => a.status === 'Submitted').length;
+
+  if (loading) {
+    return <div className="p-8 text-center text-gray-600">Loading assignments...</div>;
+  }
+  if (error) {
+    return <div className="p-8 text-center text-red-600">{error}</div>;
+  }
 
   return (
     <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
@@ -78,7 +120,7 @@ const AssignmentModule = () => {
           {/* Total Assignments Card */}
           <div className="bg-white p-3 sm:p-6 rounded-xl shadow-lg border border-gray-200 flex flex-col items-center sm:flex-row sm:items-center gap-2 sm:gap-4 text-center sm:text-left transition-transform duration-200 hover:scale-[1.02]">
             <div className="p-2 sm:p-3 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
-              <FileText size={20} sm:size={28} /> {/* Adjusted icon size for smaller screens */}
+              <FileText size={20} /> {/* Adjusted icon size for smaller screens */}
             </div>
             <div>
               <h6 className="text-xs sm:text-sm text-gray-600 uppercase font-semibold mb-1">Total Assignments</h6>
@@ -89,7 +131,7 @@ const AssignmentModule = () => {
           {/* Pending Assignments Card */}
           <div className="bg-white p-3 sm:p-6 rounded-xl shadow-lg border border-gray-200 flex flex-col items-center sm:flex-row sm:items-center gap-2 sm:gap-4 text-center sm:text-left transition-transform duration-200 hover:scale-[1.02]">
             <div className="p-2 sm:p-3 rounded-full bg-yellow-100 text-yellow-600 flex-shrink-0">
-              <Hourglass size={20} sm:size={28} /> {/* Adjusted icon size for smaller screens */}
+              <Hourglass size={20} /> {/* Adjusted icon size for smaller screens */}
             </div>
             <div>
               <h6 className="text-xs sm:text-sm text-gray-600 uppercase font-semibold mb-1">Pending</h6>
@@ -100,7 +142,7 @@ const AssignmentModule = () => {
           {/* Completed Assignments Card */}
           <div className="bg-white p-3 sm:p-6 rounded-xl shadow-lg border border-gray-200 flex flex-col items-center sm:flex-row sm:items-center gap-2 sm:gap-4 text-center sm:text-left transition-transform duration-200 hover:scale-[1.02]">
             <div className="p-2 sm:p-3 rounded-full bg-green-100 text-green-600 flex-shrink-0">
-              <CheckSquare size={20} sm:size={28} /> {/* Adjusted icon size for smaller screens */}
+              <CheckSquare size={20} /> {/* Adjusted icon size for smaller screens */}
             </div>
             <div>
               <h6 className="text-xs sm:text-sm text-gray-600 uppercase font-semibold mb-1">Completed</h6>
@@ -124,24 +166,19 @@ const AssignmentModule = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {assignments.map((a) => {
-                  const className = classes.find(c => c.id === a.class)?.name || a.class;
-                  const isCompleted = a.status === 'completed';
-                  const isOverdue = !isCompleted && new Date(a.dueDate) < new Date();
-
+                  const className = getClassName(a.class);
                   return (
-                    <tr key={a.id} className={isOverdue ? 'bg-red-50 hover:bg-red-100 transition-colors duration-150' : 'hover:bg-gray-50 transition-colors duration-150'}>
+                    <tr key={a._id} className={a.status === 'Late' ? 'bg-red-50 hover:bg-red-100 transition-colors duration-150' : 'hover:bg-gray-50 transition-colors duration-150'}>
                       <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{a.title}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-600">{className}</td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${isOverdue ? 'text-red-600 font-semibold' : 'text-gray-800'}`}>
-                        {a.dueDate}
-                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${a.status === 'Late' ? 'text-red-600 font-semibold' : 'text-gray-800'}`}>{a.dueDate ? new Date(a.dueDate).toLocaleDateString() : ''}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          isCompleted ? 'bg-green-100 text-green-800' :
-                          isOverdue ? 'bg-red-100 text-red-800' :
+                          a.status === 'Submitted' ? 'bg-green-100 text-green-800' :
+                          a.status === 'Late' ? 'bg-red-100 text-red-800' :
                           'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {isCompleted ? 'Completed' : isOverdue ? 'Overdue' : 'Pending'}
+                          {a.status === 'Submitted' ? 'Completed' : a.status === 'Late' ? 'Overdue' : 'Pending'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

@@ -1,6 +1,6 @@
 import React from 'react';
 
-function UserCard ({ type }) {
+function UserCard ({ type, count }) {
   return (
     // Decrease vertical padding on small screens (mobile-first approach)
     // and potentially adjust min-width for very small screens if needed.
@@ -12,7 +12,7 @@ function UserCard ({ type }) {
         </span>
       </div>
       {/* Decreased vertical margin for heading on mobile */}
-      <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold my-2 sm:my-4">1,234</h1>
+      <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold my-2 sm:my-4">{count !== undefined ? count : '—'}</h1>
       {/* Adjusted font size for smaller screens */}
       <h2 className="capitalize text-xs sm:text-sm lg:text-base font-medium text-gray-500">{type}s</h2>
     </div>

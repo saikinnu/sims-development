@@ -17,6 +17,13 @@ function AddParent({ onClose, onSave, existingParents }) {
 
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({
+    length: false,
+    lowercase: false,
+    uppercase: false,
+    number: false,
+    special: false
+  });
 
   const validateForm = () => {
     const newErrors = {};
@@ -28,6 +35,34 @@ function AddParent({ onClose, onSave, existingParents }) {
 
     if (!trimmedParentId) newErrors.user_id = 'Parent ID is required';
     if (!trimmedPassword) newErrors.password = 'Password is required';
+    else {
+      // Password strength validation
+      const passwordErrors = [];
+      
+      if (trimmedPassword.length < 8) {
+        passwordErrors.push('at least 8 characters long');
+      }
+      
+      if (!/(?=.*[a-z])/.test(trimmedPassword)) {
+        passwordErrors.push('one lowercase letter');
+      }
+      
+      if (!/(?=.*[A-Z])/.test(trimmedPassword)) {
+        passwordErrors.push('one uppercase letter');
+      }
+      
+      if (!/(?=.*\d)/.test(trimmedPassword)) {
+        passwordErrors.push('one number');
+      }
+      
+      if (!/(?=.*[@$!%*?&])/.test(trimmedPassword)) {
+        passwordErrors.push('one special character (@$!%*?&)');
+      }
+      
+      if (passwordErrors.length > 0) {
+        newErrors.password = `Password must contain ${passwordErrors.join(', ')}`;
+      }
+    }
     if (!full_name.trim()) newErrors.full_name = 'Name is required';
 
     const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
@@ -43,7 +78,10 @@ function AddParent({ onClose, onSave, existingParents }) {
     }
 
     // Check for duplicate Parent IDs, emails, and phone numbers among existing parents
-    if (existingParents.some(p => p.user_id.toLowerCase() === trimmedParentId.toLowerCase())) {
+    if (existingParents.some(p => {
+      const pUserId = typeof p.user_id === 'object' ? p.user_id.user_id : p.user_id;
+      return pUserId && pUserId.toLowerCase() === trimmedParentId.toLowerCase();
+    })) {
       newErrors.user_id = 'Duplicate Parent ID found';
     }
 
@@ -64,10 +102,25 @@ function AddParent({ onClose, onSave, existingParents }) {
     return Object.keys(newErrors).length === 0;
   };
 
+  const checkPasswordStrength = (password) => {
+    setPasswordStrength({
+      length: password.length >= 8,
+      lowercase: /(?=.*[a-z])/.test(password),
+      uppercase: /(?=.*[A-Z])/.test(password),
+      number: /(?=.*\d)/.test(password),
+      special: /(?=.*[@$!%*?&])/.test(password)
+    });
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
+    
+    // Check password strength when password field changes
+    if (name === 'password') {
+      checkPasswordStrength(value);
+    }
   };
 
   const handleNumberChange = (e) => { // New handler for childrenCount
@@ -166,6 +219,35 @@ function AddParent({ onClose, onSave, existingParents }) {
               {showPassword ? '🙈' : '👁️'}
             </button>
             {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+            
+            {/* Password Strength Indicator */}
+            {formData.password && (
+              <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                <p className="text-sm font-medium text-gray-700 mb-2">Password Requirements:</p>
+                <div className="space-y-1">
+                  <div className={`flex items-center text-sm ${passwordStrength.length ? 'text-green-600' : 'text-gray-500'}`}>
+                    <span className={`w-2 h-2 rounded-full mr-2 ${passwordStrength.length ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                    At least 8 characters
+                  </div>
+                  <div className={`flex items-center text-sm ${passwordStrength.lowercase ? 'text-green-600' : 'text-gray-500'}`}>
+                    <span className={`w-2 h-2 rounded-full mr-2 ${passwordStrength.lowercase ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                    One lowercase letter
+                  </div>
+                  <div className={`flex items-center text-sm ${passwordStrength.uppercase ? 'text-green-600' : 'text-gray-500'}`}>
+                    <span className={`w-2 h-2 rounded-full mr-2 ${passwordStrength.uppercase ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                    One uppercase letter
+                  </div>
+                  <div className={`flex items-center text-sm ${passwordStrength.number ? 'text-green-600' : 'text-gray-500'}`}>
+                    <span className={`w-2 h-2 rounded-full mr-2 ${passwordStrength.number ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                    One number
+                  </div>
+                  <div className={`flex items-center text-sm ${passwordStrength.special ? 'text-green-600' : 'text-gray-500'}`}>
+                    <span className={`w-2 h-2 rounded-full mr-2 ${passwordStrength.special ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                    One special character (@$!%*?&)
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Other Inputs */}

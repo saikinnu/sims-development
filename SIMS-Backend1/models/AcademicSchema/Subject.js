@@ -10,6 +10,16 @@ const SubjectSchema = new mongoose.Schema(
     category: {
       type: String
     },
+    maxMarks: {
+      type: Number,
+      required: true,
+      default: 100
+    },
+    passingMarks: {
+      type: Number,
+      required: true,
+      default: 35
+    },
     teachers: [
       {
         name: {

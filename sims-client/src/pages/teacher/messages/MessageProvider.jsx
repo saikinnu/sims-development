@@ -1,69 +1,24 @@
 // src/contexts/MessageProvider.jsx or src/pages/messages/MessageProvider.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
 
 const MessageContext = createContext(null);
 
+const API_BASE = 'http://localhost:5000/api/messages';
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 export const MessageProvider = ({ children }) => {
-  const [messages, setMessages] = useState([
-    // Your initial messages array from MessageModule.jsx
-    // Ensure you keep this data consistent with MessageModule's initial state
-    {
-      id: 'msg-001',
-      subject: 'Parent-Teacher Meeting Reminder',
-      content: 'This is a reminder about the upcoming parent-teacher meeting scheduled for Friday, June 10th at 3:00 PM in the school auditorium.',
-      sender: 'teacher@school.edu',
-      recipients: ['parent1@email.com', 'parent2@email.com'],
-      status: 'sent',
-      date: '2023-06-05T14:30:00Z',
-      read: true,
-      attachments: ['meeting_schedule.pdf'],
-      starred: true,
-      deletedAt: null
-    },
-    {
-      id: 'msg-002',
-      subject: 'Urgent: School Closure Tomorrow',
-      content: 'Due to severe weather warnings, the school will be closed tomorrow. All classes will resume on Monday.',
-      sender: 'principal@school.edu',
-      recipients: ['all'],
-      status: 'sent',
-      date: '2023-06-08T18:15:00Z',
-      read: false, // This message is unread and in inbox
-      attachments: [],
-      starred: false,
-      deletedAt: null
-    },
-    {
-      id: 'msg-003',
-      subject: 'Draft Message Example',
-      content: 'This is a message I started writing but haven\'t sent yet.',
-      sender: 'teacher@school.edu',
-      recipients: ['teacher1@school.edu'],
-      status: 'draft',
-      date: '2023-06-09T09:00:00Z',
-      read: false,
-      attachments: [],
-      starred: false,
-      deletedAt: null
-    },
-    {
-        id: 'msg-005',
-        subject: 'Important Project Update',
-        content: 'The deadline for the project submission has been extended to end of day Friday. Please review the new requirements.',
-        sender: 'project_manager@company.com',
-        recipients: ['user@school.edu'],
-        status: 'sent',
-        date: '2023-06-15T10:00:00Z',
-        read: false, // This message is unread and in inbox
-        attachments: [],
-        starred: true,
-        deletedAt: null
-    },
-  ]);
+  const [messages, setMessages] = useState([]); // Start with empty array, no mock data
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const TRASH_RETENTION_DAYS = 30;
 
-  // Helper function to calculate days since deletion (copied from MessageModule)
+  // Helper function to calculate days since deletion
   const getDaysSinceDeletion = (deletedAt) => {
     if (!deletedAt) return null;
     const now = new Date();
@@ -72,86 +27,133 @@ export const MessageProvider = ({ children }) => {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Days
   };
 
-  // Effect to "purge" old trash messages (copied from MessageModule)
+  // Fetch messages from backend
+  const fetchMessages = async (tab = '', search = '', status = '', dateRange = '') => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = {};
+      if (tab) params.tab = tab;
+      if (search) params.search = search;
+      if (status) params.status = status;
+      if (dateRange) params.dateRange = dateRange;
+      const res = await axios.get(API_BASE, {
+        headers: getAuthHeaders(),
+        params,
+      });
+      setMessages(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to fetch messages');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setMessages(prevMessages =>
-      prevMessages.filter(msg => {
-        if (msg.status === 'trash' && msg.deletedAt) {
-          const days = getDaysSinceDeletion(msg.deletedAt);
-          return days <= TRASH_RETENTION_DAYS;
-        }
-        return true;
-      })
-    );
+    fetchMessages();
+    // eslint-disable-next-line
   }, []);
 
-  // Calculate unread count specifically for the inbox (excluding sent by current user, drafts, and trash)
+  // Send or save message (with attachments)
+  const handleSendMessage = async (newMessage) => {
+    try {
+      const formData = new FormData();
+      formData.append('subject', newMessage.subject);
+      formData.append('content', newMessage.content);
+      formData.append('status', 'sent');
+      newMessage.recipients.forEach(r => formData.append('recipients', r));
+      if (newMessage.attachments && newMessage.attachments.length > 0) {
+        newMessage.attachments.forEach(file => {
+          if (file instanceof File) formData.append('attachments', file);
+        });
+      }
+      await axios.post(API_BASE, formData, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
+      });
+      await fetchMessages();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to send message');
+    }
+  };
+
+  const handleSaveDraft = async (draftMessage) => {
+    try {
+      const formData = new FormData();
+      formData.append('subject', draftMessage.subject);
+      formData.append('content', draftMessage.content);
+      formData.append('status', 'draft');
+      draftMessage.recipients.forEach(r => formData.append('recipients', r));
+      if (draftMessage.attachments && draftMessage.attachments.length > 0) {
+        draftMessage.attachments.forEach(file => {
+          if (file instanceof File) formData.append('attachments', file);
+        });
+      }
+      await axios.post(API_BASE, formData, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
+      });
+      await fetchMessages();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save draft');
+    }
+  };
+
+  const handleDeleteMessage = async (id) => {
+    try {
+      await axios.patch(`${API_BASE}/${id}/delete`, {}, { headers: getAuthHeaders() });
+      await fetchMessages();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete message');
+    }
+  };
+
+  const handleUndoDelete = async (id) => {
+    try {
+      await axios.patch(`${API_BASE}/${id}/undo`, {}, { headers: getAuthHeaders() });
+      await fetchMessages();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to restore message');
+    }
+  };
+
+  const handlePermanentDelete = async (id) => {
+    try {
+      await axios.delete(`${API_BASE}/${id}`, { headers: getAuthHeaders() });
+      await fetchMessages();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to permanently delete message');
+    }
+  };
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await axios.put(`${API_BASE}/${id}/read`, {}, { headers: getAuthHeaders() });
+      await fetchMessages();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to mark as read');
+    }
+  };
+
+  const handleToggleStar = async (id) => {
+    try {
+      await axios.patch(`${API_BASE}/${id}/star`, {}, { headers: getAuthHeaders() });
+      await fetchMessages();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to toggle star');
+    }
+  };
+
   const unreadMessageCount = messages.filter(m =>
     !m.read &&
-    m.status === 'sent' && // It must be a sent message
-    m.sender !== 'teacher@school.edu' && // Not sent by the current user (teacher)
-    m.status !== 'trash' // Not in trash
+    m.status === 'sent' &&
+    m.status !== 'trash'
   ).length;
-
-  // Functions that modify messages (you would move these from MessageModule.jsx)
-  const handleSendMessage = (newMessage) => {
-    setMessages(prev => [...prev, {
-      ...newMessage,
-      id: `msg-${Date.now()}`,
-      status: 'sent',
-      date: new Date().toISOString(),
-      sender: 'teacher@school.edu',
-      read: true,
-      starred: false,
-      deletedAt: null
-    }]);
-  };
-
-  const handleSaveDraft = (draftMessage) => {
-    setMessages(prev => [...prev, {
-      ...draftMessage,
-      id: `msg-${Date.now()}`,
-      status: 'draft',
-      date: new Date().toISOString(),
-      sender: 'teacher@school.edu',
-      read: false,
-      starred: false,
-      deletedAt: null
-    }]);
-  };
-
-  const handleDeleteMessage = (id) => {
-    setMessages(prev => prev.map(msg =>
-      msg.id === id ? { ...msg, status: 'trash', deletedAt: new Date().toISOString(), originalStatus: msg.status } : msg
-    ));
-  };
-
-  const handleUndoDelete = (id) => {
-    setMessages(prev => prev.map(msg =>
-      msg.id === id ? { ...msg, status: msg.originalStatus || 'inbox', deletedAt: null, originalStatus: undefined } : msg
-    ));
-  };
-
-  const handlePermanentDelete = (id) => {
-    setMessages(prev => prev.filter(msg => msg.id !== id));
-  };
-
-  const handleMarkAsRead = (id) => {
-    setMessages(prev => prev.map(msg =>
-      msg.id === id ? { ...msg, read: true } : msg
-    ));
-  };
-
-  const handleToggleStar = (id) => {
-    setMessages(prev => prev.map(msg =>
-        msg.id === id ? { ...msg, starred: !msg.starred } : msg
-    ));
-  };
-
 
   const value = {
     messages,
     unreadMessageCount,
+    loading,
+    error,
+    fetchMessages,
     handleSendMessage,
     handleSaveDraft,
     handleDeleteMessage,
@@ -159,8 +161,8 @@ export const MessageProvider = ({ children }) => {
     handlePermanentDelete,
     handleMarkAsRead,
     handleToggleStar,
-    getDaysSinceDeletion, // Provide if MessageModule still needs it directly
-    TRASH_RETENTION_DAYS // Provide if MessageModule still needs it directly
+    getDaysSinceDeletion,
+    TRASH_RETENTION_DAYS
   };
 
   return (

@@ -1,77 +1,107 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Award, Download, FileText, CheckCircle, XCircle, BarChart2, UserCheck, Star, CalendarDays, AlertCircle } from 'lucide-react';
-import { FaUsers, FaCheckCircle } from "react-icons/fa"; // Import FaUsers and FaCheckCircle for child selection UI
+import { FaUsers, FaCheckCircle } from "react-icons/fa";
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import axios from 'axios';
 
 const ExamModule = () => {
-    // --- Sample Data for Multiple Students ---
-    const [parentInfo] = useState({
-        children: [
-            {
-                id: 'child1',
-                name: "Alex Johnson",
-                grade: "Grade 5",
-                rollNo: '2025001',
-                section: 'A',
-                profilePic: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&h=200&q=80",
-            },
-            {
-                id: 'child2',
-                name: "Emily Johnson",
-                grade: "Grade 4",
-                rollNo: '2025002',
-                section: 'B',
-                profilePic: "https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&h=200&q=80",
-            }
-        ]
-    });
-
-    const [allStudentExamData] = useState({
-        'child1': { // Alex Johnson's data
-            marks: {
-                Science: 72,
-                'Social Studies': 28,
-                Mathematics: 85,
-                English: 60,
-                'Computer Science': 55,
-            },
-            subjectsConfig: {
-                Science: { maxMarks: 80, passingMarks: 30 },
-                'Social Studies': { maxMarks: 50, passingMarks: 20 },
-                Mathematics: { maxMarks: 100, passingMarks: 40 },
-                English: { maxMarks: 70, passingMarks: 25 },
-                'Computer Science': { maxMarks: 60, passingMarks: 20 },
-            },
-        },
-        'child2': { // Emily Johnson's data
-            marks: {
-                Science: 65,
-                'Social Studies': 45,
-                Mathematics: 92,
-                English: 78,
-                'Computer Science': 50,
-            },
-            subjectsConfig: {
-                Science: { maxMarks: 70, passingMarks: 25 },
-                'Social Studies': { maxMarks: 60, passingMarks: 20 },
-                Mathematics: { maxMarks: 100, passingMarks: 35 },
-                English: { maxMarks: 80, passingMarks: 30 },
-                'Computer Science': { maxMarks: 50, passingMarks: 18 },
-            },
-        }
-    });
-    // --- End Sample Data ---
-
+    const [parentInfo, setParentInfo] = useState({ children: [] });
+    const [allStudentExamData, setAllStudentExamData] = useState({});
     const [selectedChildId, setSelectedChildId] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const reportCardRef = useRef(null);
 
-    // Set initial selected child when component mounts
+    // Fetch parent's children and their exam data
     useEffect(() => {
-        if (parentInfo.children && parentInfo.children.length > 0) {
-            setSelectedChildId(parentInfo.children[0].id);
-        }
-    }, [parentInfo.children]);
+        const fetchParentData = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+
+                // Get parent profile with linked students using axios
+                const parentResponse = await axios.get('http://localhost:5000/api/parents/me', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token') || JSON.parse(localStorage.getItem('authToken'))}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const { linkedStudents } = parentResponse.data;
+
+                // Format children data for the component
+                const children = linkedStudents.map(student => ({
+                    id: student.user_id,
+                    name: student.full_name,
+                    grade: student.class_id?.class_name || student.class_id || 'N/A',
+                    rollNo: student.admission_number,
+                    section: student.class_id?.section || 'N/A',
+                    profilePic: student.profile_image?.url || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&h=200&q=80",
+                }));
+
+                setParentInfo({ children });
+
+                // Fetch exam data for each child using axios
+                const examDataPromises = children.map(async (child) => {
+                    try {
+                        const examResponse = await axios.get(`http://localhost:5000/api/students/exams/${child.id}`, {
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('token') || JSON.parse(localStorage.getItem('authToken'))}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        return {
+                            childId: child.id,
+                            data: examResponse.data
+                        };
+                    } catch (err) {
+                        console.error(`Error fetching exam data for child ${child.id}:`, err);
+                        // Return empty data structure if exam data not found
+                        return {
+                            childId: child.id,
+                            data: {
+                                student: {
+                                    id: child.id,
+                                    rollNo: child.rollNo,
+                                    name: child.name,
+                                    class: child.grade,
+                                    section: child.section,
+                                    marks: {}
+                                },
+                                subjectsConfig: {}
+                            }
+                        };
+                    }
+                });
+
+                const examDataResults = await Promise.all(examDataPromises);
+                
+                // Convert to the expected format
+                const examDataMap = {};
+                examDataResults.forEach(({ childId, data }) => {
+                    examDataMap[childId] = {
+                        marks: data.student?.marks || {},
+                        subjectsConfig: data.subjectsConfig || {}
+                    };
+                });
+
+                setAllStudentExamData(examDataMap);
+
+                // Set initial selected child
+                if (children.length > 0) {
+                    setSelectedChildId(children[0].id);
+                }
+
+            } catch (err) {
+                console.error('Error fetching parent data:', err);
+                setError('Failed to load exam data. Please try again.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchParentData();
+    }, []);
 
     // Derived state for the currently selected student and their exam config
     const loggedInStudent = useMemo(() => {
@@ -79,7 +109,6 @@ const ExamModule = () => {
     }, [selectedChildId, parentInfo.children]);
 
     const currentExamData = useMemo(() => {
-        // Ensure this always returns a valid object, even if selectedChildId is null
         return allStudentExamData[selectedChildId] || { marks: {}, subjectsConfig: {} };
     }, [selectedChildId, allStudentExamData]);
 
@@ -99,7 +128,6 @@ const ExamModule = () => {
 
     const totalScoredMarks = useMemo(() => {
         let total = 0;
-        // Ensure currentExamData.marks is an object before iterating
         if (currentExamData.marks && currentSubjectsConfig) {
             for (const subject in currentSubjectsConfig) {
                 total += currentExamData.marks[subject] || 0;
@@ -110,7 +138,6 @@ const ExamModule = () => {
 
     const totalMaxMarks = useMemo(() => {
         let total = 0;
-        // Ensure currentSubjectsConfig is an object before iterating
         if (currentSubjectsConfig) {
             for (const subject in currentSubjectsConfig) {
                 total += currentSubjectsConfig[subject].maxMarks || 0;
@@ -128,9 +155,8 @@ const ExamModule = () => {
     }, [overallPercentage]);
 
     const passedAllSubjects = useMemo(() => {
-        // Ensure currentSubjectsConfig and currentExamData.marks are objects before iterating
         if (!currentSubjectsConfig || !currentExamData.marks) {
-            return false; // Or handle as appropriate if no data is available
+            return false;
         }
         for (const subject in currentSubjectsConfig) {
             const scored = currentExamData.marks[subject] || 0;
@@ -158,18 +184,18 @@ const ExamModule = () => {
         if (input) {
             try {
                 const canvas = await html2canvas(input, {
-                    scale: 2, // Higher scale for better resolution in PDF
-                    useCORS: true, // Important if you have images from other domains
-                    logging: true, // Enable logging for debugging
-                    scrollY: -window.scrollY, // Capture the full content even if scrolled
+                    scale: 2,
+                    useCORS: true,
+                    logging: true,
+                    scrollY: -window.scrollY,
                     windowWidth: document.documentElement.offsetWidth,
                     windowHeight: document.documentElement.offsetHeight
                 });
 
                 const imgData = canvas.toDataURL('image/png');
-                const pdf = new jsPDF('p', 'mm', 'a4'); // Portrait, millimeters, A4 size
-                const imgWidth = 210; // A4 width in mm
-                const pageHeight = 297; // A4 height in mm
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgWidth = 210;
+                const pageHeight = 297;
                 const imgHeight = canvas.height * imgWidth / canvas.width;
                 let heightLeft = imgHeight;
                 let position = 0;
@@ -186,11 +212,9 @@ const ExamModule = () => {
                 pdf.save(`ReportCard_${loggedInStudent.name.replace(/\s/g, '')}_${loggedInStudent.rollNo}.pdf`);
             } catch (error) {
                 console.error('Error generating PDF:', error);
-                // Using alert for user feedback as requested, but in a real app, a custom modal would be preferred.
                 alert('Failed to generate report card. Please try again.');
             }
         } else {
-            // Using alert for user feedback as requested, but in a real app, a custom modal would be preferred.
             alert('Report card content not found for download.');
         }
     };
@@ -200,6 +224,48 @@ const ExamModule = () => {
         setSelectedChildId(childId);
     };
 
+    // Loading state
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading exam data...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                    <p className="text-red-600 mb-4">{error}</p>
+                    <button 
+                        onClick={() => window.location.reload()} 
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // No children state
+    if (parentInfo.children.length === 0) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <FaUsers className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">No children found in your account.</p>
+                    <p className="text-gray-500 text-sm">Please contact the school administration if this is incorrect.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
     <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
@@ -219,10 +285,6 @@ const ExamModule = () => {
 
                 {/* Children Selector */}
                 <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6">
-                    {/* <h5 className="mb-4 text-lg font-semibold flex items-center text-gray-800">
-                        <FaUsers className="mr-2 text-gray-600" size={22} />
-                        Select Child
-                    </h5> */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {parentInfo.children.map(child => (
                             <div
@@ -268,7 +330,7 @@ const ExamModule = () => {
                                 <p className="text-2xl font-bold text-blue-900 mb-1">{loggedInStudent.name}</p>
                                 <p className="text-md text-blue-700">
                                     Roll No: <span className="font-semibold">{loggedInStudent.rollNo}</span> |
-                                    Class: <span className="font-semibold">{loggedInStudent.class}</span> |
+                                    Class: <span className="font-semibold">{loggedInStudent.grade}</span> |
                                     Section: <span className="font-semibold">{loggedInStudent.section}</span>
                                 </p>
                                 <p className="text-sm text-blue-600 flex items-center gap-1 mt-1">

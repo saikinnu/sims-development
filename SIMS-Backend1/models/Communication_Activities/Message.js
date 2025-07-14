@@ -8,30 +8,55 @@ const MessageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    recipient: {
+    recipients: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-    },
-    role: {
+    }],
+    subject: {
       type: String,
-      enum: ["parent", "teacher", "admin"],
+      default: '',
+    },
+    content: {
+      type: String,
       required: true,
     },
-    message: {
+    status: {
       type: String,
-      required: true,
+      enum: ["sent", "draft", "trash"],
+      default: "sent",
+    },
+    date: {
+      type: Date,
+      default: Date.now,
     },
     read: {
       type: Boolean,
       default: false,
     },
+    starred: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
     attachments: [
       {
         public_id: String,
         url: String,
+        name: String,
       },
     ],
+    // For compatibility with old schema
+    role: {
+      type: String,
+      enum: ["parent", "teacher", "admin"],
+    },
+    message: {
+      type: String,
+    },
   },
   { timestamps: true }
 );

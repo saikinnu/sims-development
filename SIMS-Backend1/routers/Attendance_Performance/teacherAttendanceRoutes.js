@@ -49,6 +49,21 @@ router.delete(
 router.get('/monthly-report', protect, checkRole('admin', 'teacher'), teacherAttendanceController.getTeacherMonthlyReport);
 router.get('/export/excel/:teacherId', protect, checkRole('admin'), teacherAttendanceController.exportTeacherAttendanceExcel);
 
+// BULK: Get all teachers' attendance for a specific date
+router.get(
+  '/bulk/date',
+  protect,
+  checkRole('teacher', 'admin'),
+  teacherAttendanceController.getAttendanceByDate
+);
+
+// BULK: Set/update attendance for all teachers for a specific date
+router.post(
+  '/bulk',
+  protect,
+  checkRole('teacher', 'admin'),
+  teacherAttendanceController.setBulkAttendance
+);
 
 
 module.exports = router;

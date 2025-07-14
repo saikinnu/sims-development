@@ -44,10 +44,15 @@ function ParentDetails({ data, editable = false, onClose, onUpdate, existingPare
     // Check for duplicates only if parentId is being created or if email/phone are being changed
     // Filter existing parents to exclude the current parent being edited
     if (existingParents) {
+        const currentUserId = typeof data.user_id === 'object' ? data.user_id.user_id : data.user_id;
         existingParents
-            .filter((p) => p.user_id !== data.user_id)
+            .filter((p) => {
+                const pUserId = typeof p.user_id === 'object' ? p.user_id.user_id : p.user_id;
+                return pUserId !== currentUserId;
+            })
             .forEach((p) => {
-                if (p.user_id?.toLowerCase() === trimmedParentId?.toLowerCase()) {
+                const pUserId = typeof p.user_id === 'object' ? p.user_id.user_id : p.user_id;
+                if (pUserId?.toLowerCase() === trimmedParentId?.toLowerCase()) {
                     newErrors.user_id = 'Duplicate Parent ID found';
                 }
                 // if (trimmedEmail && p.email?.toLowerCase() === trimmedEmail) {

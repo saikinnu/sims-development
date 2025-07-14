@@ -4,20 +4,16 @@ const { Schema } = mongoose;
 const ParentSchema = new Schema(
   {
     user_id: {
-      // type: mongoose.Schema.Types.ObjectId,
-      // ref: 'User',
-      type:String,
-      // required: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
       unique: true,
     },
     full_name: {
       type: String,
-      // required: true,
+      required: true,
     },
     email:{
-      type:String
-    },
-    password:{
       type:String
     },
     childrenCount:{
@@ -25,11 +21,12 @@ const ParentSchema = new Schema(
       default:0,
     },
     role:{
-      type:String
+      type:String,
+      default: 'parent'
     },
     phone: {
       type: String,
-      // required: true,
+      required: true,
     },
     // occupation: {
     //   type: String,

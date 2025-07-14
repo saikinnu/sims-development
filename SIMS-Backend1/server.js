@@ -27,11 +27,19 @@ const bankRoutes = require('./routers/Administrative/bankRoutes');
 const feeRoutes = require('./routers/Administrative/feeRoutes');
 const adminRoutes = require('./routers/CoreUserRoutes/adminRoutes');
 const otpRoutes = require('./routers/CoreUserRoutes/authOtpRoutes');
+const examReports = require('./routers/Attendance_Performance/examReportRoutes');
+const resourceRoutes = require('./routers/Library_Management/resourceRoutes');
+const teacherScheduleRoutes = require('./routers/Attendance_Performance/teacherScheduleRoutes');
+// const diaryRoutes = require('./routers/Communication_Activities/diaryRoutes');
 
 const app = express();
 app.use(express.json());
 const cors = require('cors');
-app.use(cors());
+
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
 
 app.use("/api/users", userRoutes);
 app.use('/api/teachers', teacherRoutes);
@@ -39,7 +47,7 @@ app.use('/api/students', studentRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/parents', parentRoutes);
 app.use('/api/admin-staff', adminStaffRoutes);
-app.use('/api/attendance', studentAttendanceRoutes);
+app.use('/api/student-attendance', studentAttendanceRoutes);
 app.use('/api/teacher-attendance', teacherAttendanceRoutes);
 app.use('/api/homework', homeworkRoutes);
 app.use('/api/homework-submissions', homeworkSubmissionRoutes);
@@ -57,10 +65,14 @@ app.use('/api/books', bookRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/messages', messageRoutes);
+// app.use('/api/diary', diaryRoutes);
 app.use("/api/bank", bankRoutes);
 app.use('/api/fees', feeRoutes);
 app.use("/api/admins", adminRoutes);
 app.use("/api/auth", otpRoutes);
+app.use('/api/exam-reports', examReports);
+app.use('/api/resources', resourceRoutes);
+app.use('/api/teacher/schedules', teacherScheduleRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => app.listen(process.env.PORT || 5000, () => console.log("Server successfully running")))

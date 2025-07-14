@@ -1,5 +1,6 @@
 // TotalMarksModal.jsx
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { XCircle, Maximize2 } from 'lucide-react'; // Import icons for close and potential expand (optional)
 
 function TotalMarksModal({ onClose, onSaveMarks, initialSubjectsConfig }) {

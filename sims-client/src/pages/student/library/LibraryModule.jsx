@@ -1,62 +1,38 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import axios from 'axios';
 import ResourceCard from './ResourceCard';
 import { FaBookOpen } from 'react-icons/fa';
 import { X, Filter, Search } from 'lucide-react';
 
+const API_URL = 'http://localhost:5000/api/resources';
+
+const getAuthHeaders = () => {
+  const token = JSON.parse(localStorage.getItem('authToken'));
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const LibraryModule = () => {
-  // State for all library resources
-  const [allResources] = useState([
-    {
-      id: 'res_001',
-      subject: 'Mathematics',
-      topic: 'Algebra Basics',
-      classes: ['Class 8', 'Class 9'],
-      description: 'Comprehensive guide to fundamental algebraic concepts.',
-      type: 'pdf',
-      url: 'math_algebra_basics.pdf',
-      title: 'Algebra Basics Textbook',
-    },
-    {
-      id: 'res_002',
-      subject: 'Science',
-      topic: 'Photosynthesis Cycle',
-      classes: ['Class 6', 'Class 7', 'Class 8'],
-      description: 'Visual explanation of how plants make food.',
-      type: 'video',
-      url: 'https://youtube.com/photosynthesis_vid',
-      title: 'Photosynthesis Animated Video',
-    },
-    {
-      id: 'res_003',
-      subject: 'English',
-      topic: 'Grammar Rules',
-      classes: ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10'],
-      description: 'Essential English grammar rules for all grades.',
-      type: 'image',
-      url: 'https://placehold.co/600x400/FF0000/FFFFFF?text=Grammar%20Chart',
-      title: 'English Grammar Chart',
-    },
-    {
-      id: 'res_004',
-      subject: 'History',
-      topic: 'World War II Overview',
-      classes: ['Class 9', 'Class 10'],
-      description: 'Concise summary of key events and figures in WWII.',
-      type: 'link',
-      url: 'https://wikipedia.org/wiki/World_War_II',
-      title: 'World War II Wikipedia',
-    },
-    {
-      id: 'res_005',
-      subject: 'Mathematics',
-      topic: 'Geometry Formulas',
-      classes: ['Class 7', 'Class 8', 'Class 9'],
-      description: 'Quick reference for common geometry formulas.',
-      type: 'pdf',
-      url: 'geometry_formulas.pdf',
-      title: 'Geometry Formulas Sheet',
-    },
-  ]);
+  // State for all library resources (from backend)
+  const [allResources, setAllResources] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Fetch resources from backend
+  const fetchResources = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+      setAllResources(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Error loading resources');
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchResources();
+  }, [fetchResources]);
 
   // Combined state for filters
   const [filters, setFilters] = useState({
@@ -282,7 +258,17 @@ const LibraryModule = () => {
 
       {/* Resource Cards Display */}
       <div className="min-h-[300px]">
-        {filteredResources.length === 0 ? (
+        {loading ? (
+          <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-6 rounded-lg shadow-md text-center">
+            <p className="font-bold text-lg mb-2">Loading Resources...</p>
+            <p>Please wait while we fetch the resources.</p>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border-l-4 border-red-400 text-red-800 p-6 rounded-lg shadow-md text-center">
+            <p className="font-bold text-lg mb-2">Error: {error}</p>
+            <p>Failed to load resources. Please try again later.</p>
+          </div>
+        ) : filteredResources.length === 0 ? (
           <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-6 rounded-lg shadow-md text-center">
             <p className="font-bold text-lg mb-2">No Resources Found!</p>
             <p>Try adjusting your search or filters.</p>

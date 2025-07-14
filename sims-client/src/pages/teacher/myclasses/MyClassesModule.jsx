@@ -1,59 +1,19 @@
 // src/pages/teacher/classes/MyClassesModule.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
 import { BookOpen, Plus, Edit, Trash, X, Calendar, Clock, Book } from 'lucide-react'; // Import Lucide icons
 
-const MyClassesModule = () => {
-    // Mock current teacher ID.
-    const currentTeacherId = "T125"; // Displaying classes for this teacher
+const API_BASE_URL = 'http://localhost:5000/api/classes';
 
-    // Mock data for all classes in the system.
-    const [allClasses, setAllClasses] = useState([
-        {
-            id: 'class_001',
-            name: '9 A',
-            subject: 'Chemistry',
-            teacherId: 'T125',
-            time: '09:00 AM - 10:00 AM',
-            day: 'Monday, Wednesday, Friday',
-            period: '1st Period'
-        },
-        {
-            id: 'class_002',
-            name: '10 B',
-            subject: 'Physics',
-            teacherId: 'T125',
-            time: '10:00 AM - 11:00 AM',
-            day: 'Monday, Tuesday, Wednesday, Thursday, Friday',
-            period: '2nd Period'
-        },
-        {
-            id: 'class_003',
-            name: '8 C',
-            subject: 'Biology',
-            teacherId: 'T125',
-            time: '11:00 AM - 12:00 PM',
-            day: 'Tuesday, Thursday',
-            period: '3rd Period'
-        },
-        {
-            id: 'class_004',
-            name: '7 D',
-            subject: 'Chemistry',
-            teacherId: 'T125',
-            time: '12:00 PM - 01:00 PM',
-            day: 'Monday, Wednesday',
-            period: '4th Period'
-        },
-        {
-            id: 'class_005',
-            name: '6 E',
-            subject: 'Physics',
-            teacherId: 'T125',
-            time: '01:00 PM - 02:00 PM',
-            day: 'Wednesday, Friday',
-            period: '5th Period'
-        },
-    ]);
+const MyClassesModule = () => {
+    // Mock current teacher ID (empId).
+    const currentTeacherId = "T125"; // Displaying classes for this teacher
+    const currentTeacherName = "Current Teacher"; // Optionally, get from auth context
+
+    // State for all classes fetched from backend
+    const [allClasses, setAllClasses] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     // State for managing the add/edit form
     const [showForm, setShowForm] = useState(false);
@@ -65,16 +25,52 @@ const MyClassesModule = () => {
         teacherId: currentTeacherId, // Default to current teacher
         time: '',
         day: '',
-        period: ''
+        period: '',
+        strength: '',
+        grade: '',
+        supervisor: ''
     });
 
-    // Filters classes to only show those assigned to the current teacher.
+    // Helper to get auth headers
+    const getAuthHeaders = () => {
+        const token = JSON.parse(localStorage.getItem('authToken'));
+        return {
+            Authorization: token ? `Bearer ${token}` : '',
+            'X-App-Client': 'teacher-portal', // Example custom header
+        };
+    };
+
+    // Fetch all classes from backend on mount
+    useEffect(() => {
+        const fetchClasses = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const res = await axios.get(API_BASE_URL, {
+                    withCredentials: true,
+                    headers: getAuthHeaders(),
+                });
+                setAllClasses(res.data);
+            } catch (err) {
+                setError('Failed to fetch classes.');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchClasses();
+    }, []);
+
+    // Filters classes to only show those assigned to the current teacher (by empId)
     const teacherClasses = useMemo(() => {
-        return allClasses.filter(cls => cls.teacherId === currentTeacherId);
+        return allClasses.filter(cls =>
+            Array.isArray(cls.teachers_details) &&
+            cls.teachers_details.some(t => t.empId === currentTeacherId)
+        );
     }, [allClasses, currentTeacherId]);
 
     // Helper function to format the schedule string (e.g., "Mon-09:00AM")
     const formatSchedule = (dayString, timeString) => {
+        if (!dayString || !timeString) return '';
         const firstDayAbbr = dayString.split(',')[0].substring(0, 3);
         const startTime = timeString.split(' - ')[0];
         return `${firstDayAbbr} @ ${startTime}`;
@@ -90,7 +86,10 @@ const MyClassesModule = () => {
             teacherId: currentTeacherId,
             time: '',
             day: '',
-            period: ''
+            period: '',
+            strength: '',
+            grade: '',
+            supervisor: ''
         });
         setShowForm(true);
     };
@@ -98,18 +97,40 @@ const MyClassesModule = () => {
     // Populates form data with the class being edited and opens the form
     const handleEditClick = (cls) => {
         setEditingClass(cls);
-        setFormData(cls); // Populate form with existing class data
+        // Map backend class to form fields
+        setFormData({
+            id: cls._id,
+            name: cls.class_name || '',
+            subject: (cls.teachers_details && cls.teachers_details[0]?.subjects[0]) || '',
+            teacherId: (cls.teachers_details && cls.teachers_details[0]?.empId) || currentTeacherId,
+            time: cls.time || '',
+            day: cls.day || '',
+            period: cls.period || '',
+            strength: cls.strength || '',
+            grade: cls.grade || '',
+            supervisor: cls.supervisor || ''
+        });
         setShowForm(true);
     };
 
     // Handles deletion of a class
-    const handleDeleteClick = (classId) => {
-        // IMPORTANT: In a real application, replace window.confirm with a custom modal/dialog.
+    const handleDeleteClick = async (classId) => {
         if (window.confirm('Are you sure you want to delete this class? This action cannot be undone.')) {
-            setAllClasses(prevClasses => prevClasses.filter(cls => cls.id !== classId));
-            // If the deleted class was the one being edited, close the form
-            if (editingClass && editingClass.id === classId) {
-                handleCancelClick();
+            setLoading(true);
+            setError(null);
+            try {
+                await axios.delete(`${API_BASE_URL}/${classId}`, {
+                    withCredentials: true,
+                    headers: getAuthHeaders(),
+                });
+                setAllClasses(prevClasses => prevClasses.filter(cls => cls._id !== classId));
+                if (editingClass && editingClass._id === classId) {
+                    handleCancelClick();
+                }
+            } catch (err) {
+                setError('Failed to delete class.');
+            } finally {
+                setLoading(false);
             }
         }
     };
@@ -118,8 +139,8 @@ const MyClassesModule = () => {
     const handleCancelClick = () => {
         setShowForm(false);
         setEditingClass(null);
-        setFormData({ // Reset form data
-            id: '', name: '', subject: '', teacherId: currentTeacherId, time: '', day: '', period: ''
+        setFormData({
+            id: '', name: '', subject: '', teacherId: currentTeacherId, time: '', day: '', period: '', strength: '', grade: '', supervisor: ''
         });
     };
 
@@ -133,34 +154,58 @@ const MyClassesModule = () => {
     };
 
     // Handles form submission (add or update)
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-
         // Basic validation
-        // IMPORTANT: In a real application, replace alert with a custom modal/dialog.
-        if (!formData.name || !formData.subject || !formData.time || !formData.day || !formData.period) {
-            alert('Please fill in all fields.');
+        if (!formData.name || !formData.subject || !formData.strength) {
+            alert('Please fill in all required fields (Class Name, Subject, Strength).');
             return;
         }
-
-        if (editingClass) {
-            // Update existing class
-            setAllClasses(prevClasses =>
-                prevClasses.map(cls =>
-                    cls.id === editingClass.id ? { ...formData } : cls
-                )
-            );
-        } else {
-            // Add new class
-            const newClass = { ...formData, id: `class_${Date.now()}` }; // Generate unique ID
-            setAllClasses(prevClasses => [...prevClasses, newClass]);
+        setLoading(true);
+        setError(null);
+        // Prepare backend payload
+        const payload = {
+            class_name: formData.name,
+            strength: Number(formData.strength),
+            grade: formData.grade,
+            supervisor: formData.supervisor,
+            teachers_details: [
+                {
+                    name: currentTeacherName,
+                    empId: currentTeacherId,
+                    subjects: [formData.subject]
+                }
+            ],
+            // Optionally, you can add time/day/period as custom fields if backend supports
+        };
+        try {
+            if (editingClass) {
+                // Update existing class
+                const res = await axios.put(`${API_BASE_URL}/${formData.id}`, payload, {
+                    withCredentials: true,
+                    headers: getAuthHeaders(),
+                });
+                setAllClasses(prevClasses =>
+                    prevClasses.map(cls =>
+                        cls._id === formData.id ? res.data : cls
+                    )
+                );
+            } else {
+                // Add new class
+                const res = await axios.post(API_BASE_URL, payload, {
+                    withCredentials: true,
+                    headers: getAuthHeaders(),
+                });
+                setAllClasses(prevClasses => [...prevClasses, res.data]);
+            }
+            setShowForm(false);
+            setEditingClass(null);
+            setFormData({ id: '', name: '', subject: '', teacherId: currentTeacherId, time: '', day: '', period: '', strength: '', grade: '', supervisor: '' });
+        } catch (err) {
+            setError('Failed to save class.');
+        } finally {
+            setLoading(false);
         }
-
-        setShowForm(false); // Close form after submission
-        setEditingClass(null); // Clear editing state
-        setFormData({ // Reset form data
-            id: '', name: '', subject: '', teacherId: currentTeacherId, time: '', day: '', period: ''
-        });
     };
 
 
@@ -178,6 +223,14 @@ const MyClassesModule = () => {
                     <Plus size={20} /> Add New Class
                 </button>
             </div>
+
+            {/* Loading/Error State */}
+            {loading && (
+                <div className="text-center text-blue-600 py-8">Loading classes...</div>
+            )}
+            {error && (
+                <div className="text-center text-red-600 py-4">{error}</div>
+            )}
 
             {/* Add/Edit Class Form */}
             {showForm && (
@@ -199,7 +252,7 @@ const MyClassesModule = () => {
                             />
                         </div>
                         <div>
-                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">Grade (e.g., 9 A)</label>
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">Class Name (e.g., 9 A)</label>
                             <input
                                 type="text"
                                 name="name"
@@ -211,41 +264,40 @@ const MyClassesModule = () => {
                             />
                         </div>
                         <div>
-                            <label htmlFor="period" className="block text-sm font-medium text-gray-700 mb-2">Period (e.g., 1st Period)</label>
+                            <label htmlFor="strength" className="block text-sm font-medium text-gray-700 mb-2">Strength</label>
                             <input
-                                type="text"
-                                name="period"
-                                id="period"
-                                value={formData.period}
+                                type="number"
+                                name="strength"
+                                id="strength"
+                                value={formData.strength}
                                 onChange={handleChange}
                                 className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-base"
                                 required
                             />
                         </div>
                         <div>
-                            <label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-2">Time (e.g., 09:00 AM - 10:00 AM)</label>
+                            <label htmlFor="grade" className="block text-sm font-medium text-gray-700 mb-2">Grade</label>
                             <input
                                 type="text"
-                                name="time"
-                                id="time"
-                                value={formData.time}
+                                name="grade"
+                                id="grade"
+                                value={formData.grade}
                                 onChange={handleChange}
                                 className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-base"
-                                required
                             />
                         </div>
-                        <div className="col-span-1 md:col-span-2">
-                            <label htmlFor="day" className="block text-sm font-medium text-gray-700 mb-2">Days (e.g., Monday, Wednesday, Friday)</label>
+                        <div>
+                            <label htmlFor="supervisor" className="block text-sm font-medium text-gray-700 mb-2">Supervisor</label>
                             <input
                                 type="text"
-                                name="day"
-                                id="day"
-                                value={formData.day}
+                                name="supervisor"
+                                id="supervisor"
+                                value={formData.supervisor}
                                 onChange={handleChange}
                                 className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-base"
-                                required
                             />
                         </div>
+                        {/* Optionally, add time/day/period fields if you want to store them as custom fields */}
                         <div className="col-span-1 md:col-span-2 flex justify-end space-x-4 mt-6">
                             <button
                                 type="button"
@@ -267,7 +319,7 @@ const MyClassesModule = () => {
 
             {/* Main Content Area: Table of Classes */}
             <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 min-h-[400px] overflow-x-auto border border-gray-200">
-                {teacherClasses.length === 0 ? (
+                {(!loading && teacherClasses.length === 0) ? (
                     // Display message if no classes are assigned
                     <div className="text-center text-gray-500 py-16 flex flex-col items-center justify-center">
                         <Book size={60} className="mb-6 text-gray-300" />
@@ -295,15 +347,19 @@ const MyClassesModule = () => {
                                 </th>
                                 <th scope="col"
                                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Class Name
+                                </th>
+                                <th scope="col"
+                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Strength
+                                </th>
+                                <th scope="col"
+                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Grade
                                 </th>
                                 <th scope="col"
                                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Period
-                                </th>
-                                <th scope="col"
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Schedule
+                                    Supervisor
                                 </th>
                                 <th scope="col" className="relative px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Actions
@@ -312,23 +368,21 @@ const MyClassesModule = () => {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {teacherClasses.map(cls => (
-                                <tr key={cls.id} className="hover:bg-gray-50 transition-colors duration-150">
+                                <tr key={cls._id} className="hover:bg-gray-50 transition-colors duration-150">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {cls.subject}
+                                        {(cls.teachers_details && cls.teachers_details[0]?.subjects[0]) || ''}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                        {cls.name}
+                                        {cls.class_name}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                        {cls.period}
+                                        {cls.strength}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar size={16} className="text-gray-400" /> {cls.day}
-                                        </div>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <Clock size={16} className="text-gray-400" /> {cls.time}
-                                        </div>
+                                        {cls.grade}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                        {cls.supervisor}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex items-center justify-end gap-3">
@@ -340,7 +394,7 @@ const MyClassesModule = () => {
                                                 <Edit size={18} />
                                             </button>
                                             <button
-                                                onClick={() => handleDeleteClick(cls.id)}
+                                                onClick={() => handleDeleteClick(cls._id)}
                                                 className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-50 transition-colors duration-200"
                                                 title="Delete Class"
                                             >

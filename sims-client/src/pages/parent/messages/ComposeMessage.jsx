@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import CreatableSelect from 'react-select/creatable';
+import CreatableSelect from 'react-select/creatable'; // Changed from 'Select'
 import { X, Paperclip, Send, Save } from 'lucide-react';
 import { fetchUsers, fetchUserById } from './MessageData'; // Import our mock data functions
 
-// No predefined recipient groups for a parent panel.
-// Parents will now only message individual teachers.
-const recipientOptions = [];
+const recipientOptions = [
+  { value: 'all-users', label: 'All Users' }, // Changed 'all' to 'all-users' for clarity
+  { value: 'all-students', label: 'All Students' },
+  { value: 'all-teachers', label: 'All Teachers' },
+  { value: 'all-parents', label: 'All Parents' },
+  { value: 'all-staff', label: 'All Staff' },
+];
 
 // Helper function to debounce an API call
 const debounce = (func, delay) => {
@@ -38,7 +42,7 @@ function ComposeMessage({ onClose, onSend, onSaveDraft, replyTo }) {
       setIsLoadingOptions(true);
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 300));
-      const users = fetchUsers(inputValue); // Use fetchUsers to get suggestions (already filtered by type)
+      const users = fetchUsers(inputValue); // Use fetchUsers to get suggestions (all types for admin)
       const options = users.map(user => ({
         value: user.id,
         label: `${user.name} (${user.id}) - ${user.type}`
@@ -68,7 +72,7 @@ function ComposeMessage({ onClose, onSend, onSaveDraft, replyTo }) {
   const handleRecipientsChange = (selectedOptions, actionMeta) => {
     if (actionMeta.action === 'create-option') {
       const newInputValue = actionMeta.option.value; // The value typed by the user
-      const foundUser = fetchUserById(newInputValue); // Try to find by exact ID (already type-filtered)
+      const foundUser = fetchUserById(newInputValue); // Try to find by exact ID
 
       if (foundUser) {
         // If found, replace the raw typed option with the properly formatted user object
@@ -82,8 +86,8 @@ function ComposeMessage({ onClose, onSend, onSaveDraft, replyTo }) {
           recipients: [...selectedOptions.filter(opt => opt.value !== newInputValue), newRecipient]
         }));
       } else {
-        // If not found by ID or type is not allowed for parents
-        console.error(`Invalid User ID or unauthorized recipient type: "${newInputValue}". Parents can only message Teachers.`);
+        // If not found by ID, treat it as an invalid input
+        console.error(`Invalid User ID: "${newInputValue}". Please enter a valid ID or select from suggestions.`);
         // Remove the invalid option from the selected list
         setFormData(prev => ({
           ...prev,
@@ -131,10 +135,13 @@ function ComposeMessage({ onClose, onSend, onSaveDraft, replyTo }) {
     onClose();
   };
 
+  // Combine static group options with dynamically loaded individual options
+  const allRecipientOptions = [...recipientOptions, ...individualRecipientOptions];
+
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"> {/* Added flex flex-col, removed overflow-hidden */}
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4"> {/* Header */}
           <h2 className="text-lg font-medium text-gray-900">New Message</h2>
           <button
             onClick={onClose}
@@ -144,25 +151,29 @@ function ComposeMessage({ onClose, onSend, onSaveDraft, replyTo }) {
           </button>
         </div>
 
-        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+        {/* Main content area - now flex-grow and scrollable */}
+        <div className="p-6 space-y-4 overflow-y-auto flex-1"> {/* Removed maxHeight, added flex-1 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">To *</label>
             <CreatableSelect
               isMulti
-              options={recipientOptions} // Now empty, only individual options will be suggested
+              options={recipientOptions} // Use the predefined group options
               value={formData.recipients}
               onChange={handleRecipientsChange}
-              placeholder="Type individual Teacher ID/name (e.g., T001, Mr. Davis)..."
+              placeholder="Select groups or type individual ID/name (e.g., T001, Alice Smith)..."
               className={`basic-select ${errors.recipients ? 'border-red-500' : ''}`}
               classNamePrefix="select"
-              formatCreateLabel={(inputValue) => `Add Teacher: "${inputValue}"`}
+              formatCreateLabel={(inputValue) => `Add individual ID/Name: "${inputValue}"`}
+              // Async props for loading options as user types
               loadOptions={loadIndividualRecipients}
+              // This is important: tell CreatableSelect not to create if we haven't confirmed it's a valid ID
               isValidNewOption={(inputValue, selectValue, selectOptions) => {
+                // Return false if input is empty, or if an option with this value already exists (case-insensitive)
                 if (!inputValue) return false;
                 const exists = selectOptions.some(option => option.value.toLowerCase() === inputValue.toLowerCase());
                 return !exists;
               }}
-              isLoading={isLoadingOptions}
+              isLoading={isLoadingOptions} // Show loading indicator in the select
             />
             {errors.recipients && <p className="mt-1 text-sm text-red-600">{errors.recipients}</p>}
           </div>
@@ -221,6 +232,7 @@ function ComposeMessage({ onClose, onSend, onSaveDraft, replyTo }) {
           </div>
         </div>
 
+        {/* Footer - now always visible at the bottom of the flex column */}
         <div className="flex justify-between items-center border-t border-gray-200 px-6 py-4 bg-gray-50">
           <div className="flex space-x-3">
             <button

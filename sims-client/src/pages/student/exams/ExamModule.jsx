@@ -1,47 +1,88 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
 import { BookOpen, Award, CheckCircle, XCircle, BarChart2 } from 'lucide-react';
 
 const ExamModule = () => {
-  const sampleStudentData = {
-    id: 'S001',
-    rollNo: '2025001',
-    name: 'Alice Johnson',
-    class: 'Grade 5',
-    section: 'A',
-    marks: {
-      Science: 72,
-      'Social Studies': 28,
-      Mathematics: 85,
-      English: 60,
-      'Computer Science': 55,
-    },
+  const [studentData, setStudentData] = useState(null);
+  const [subjectsConfig, setSubjectsConfig] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Helper to get auth headers
+  const getAuthHeaders = () => {
+    const token = JSON.parse(localStorage.getItem('authToken'));
+    return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  const sampleSubjectsConfig = {
-    Science: { maxMarks: 80 },
-    'Social Studies': { maxMarks: 50 },
-    Mathematics: { maxMarks: 100 },
-    English: { maxMarks: 70 },
-    'Computer Science': { maxMarks: 60 },
+  // Helper to get student user_id from localStorage
+  const getStudentUserId = () => {
+    return JSON.parse(localStorage.getItem('authUserID'));
   };
+  console.log('user id ',getStudentUserId());
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
 
-  const [loggedInStudent] = useState(sampleStudentData);
-  const [currentSubjectsConfig] = useState(sampleSubjectsConfig);
+    const studentUserId = getStudentUserId();
+    if (!studentUserId) {
+      setError('Student user_id not found. Please log in again.');
+      setLoading(false);
+      return;
+    }
+
+    // Step 1: Fetch student profile by user_id
+    axios.get(`http://localhost:5000/api/students/by-userid/${studentUserId}`, {
+      headers: getAuthHeaders(),
+    })
+      .then(profileRes => {
+        // Step 2: Fetch exam data using the user_id
+        return axios.get(`http://localhost:5000/api/students/exams/${studentUserId}`, {
+          headers: getAuthHeaders(),
+        });
+      })
+      .then(examRes => {
+        setStudentData(examRes.data.student);
+        setSubjectsConfig(examRes.data.subjectsConfig);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError('Failed to load exam data');
+        setLoading(false);
+      });
+  }, []);
+
+  const loggedInStudent = studentData;
+  const currentSubjectsConfig = subjectsConfig;
 
   const currentExams = useMemo(() => {
+    if (!currentSubjectsConfig) return [];
     return Object.keys(currentSubjectsConfig).map((subject) => ({
       subject: subject,
       maxMarks: currentSubjectsConfig[subject].maxMarks,
     }));
   }, [currentSubjectsConfig]);
 
-  if (!loggedInStudent) {
+  if (loading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen font-sans antialiased flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-lg p-8 text-center text-gray-700">
+          <svg className="animate-spin h-8 w-8 text-indigo-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+          </svg>
+          <h2 className="text-2xl font-bold mb-2">Loading Exam Results...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !loggedInStudent || !currentSubjectsConfig) {
     return (
       <div className="p-6 bg-gray-50 min-h-screen font-sans antialiased flex items-center justify-center">
         <div className="bg-white rounded-xl shadow-lg p-8 text-center text-gray-700">
           <XCircle size={48} className="text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-2">Student Data Not Found</h2>
-          <p>Unable to load your exam results. Please try again later.</p>
+          <p>{error || 'Unable to load your exam results. Please try again later.'}</p>
         </div>
       </div>
     );

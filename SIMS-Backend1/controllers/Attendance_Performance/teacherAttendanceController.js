@@ -140,3 +140,53 @@ exports.exportTeacherAttendanceExcel = async (req, res) => {
     await workbook.xlsx.write(res);
     res.end();
 };
+
+// BULK: Get all teachers' attendance for a specific date
+exports.getAttendanceByDate = async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ message: 'Date is required' });
+    const start = moment(date).startOf('day').toDate();
+    const end = moment(date).endOf('day').toDate();
+    const records = await TeacherAttendance.find({
+      date: { $gte: start, $lte: end }
+    }).populate('teacher_id', 'full_name');
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// BULK: Set/update attendance for all teachers for a specific date
+exports.setBulkAttendance = async (req, res) => {
+  try {
+    const { date, records } = req.body; // records: [{ teacher_id, status }]
+    if (!date || !Array.isArray(records)) {
+      return res.status(400).json({ message: 'Date and records array are required' });
+    }
+    const start = moment(date).startOf('day').toDate();
+    const end = moment(date).endOf('day').toDate();
+    const results = [];
+    for (const rec of records) {
+      let attendance = await TeacherAttendance.findOne({
+        teacher_id: rec.teacher_id,
+        date: { $gte: start, $lte: end }
+      });
+      if (attendance) {
+        attendance.status = rec.status;
+        await attendance.save();
+      } else {
+        attendance = new TeacherAttendance({
+          teacher_id: rec.teacher_id,
+          date,
+          status: rec.status,
+        });
+        await attendance.save();
+      }
+      results.push(attendance);
+    }
+    res.json({ updated: results.length, records: results });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

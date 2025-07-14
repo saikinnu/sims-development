@@ -348,6 +348,14 @@ const upload = multer({
 
 const uploadProfile = multer({ storage: profileStorage });
 const uploadStudentProfile = multer({ storage: studentProfileStorage });
+const uploadStudentDocuments = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'students/documents',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'],
+    public_id: (req, file) => `${Date.now()}-${file.originalname}`,
+  },
+});
 const uploadCertificate = multer({ storage: certificateStorage });
 const uploadParentProfile = multer({ storage: parentProfileStorage });
 const uploadAdminStaffProfile = multer({ storage: adminStaffProfileStorage });
@@ -364,5 +372,5 @@ const uploadBankInfoStorage = multer({ storage: bankInfoStorage });
 module.exports = {
   upload, uploadProfile, uploadStudentProfile, uploadCertificate, uploadParentProfile, uploadAdminStaffProfile,
   uploadProof, uploadTeacherProof, uploadHomeworkFile, uploadHomeworkSubmission, uploadAssignmentFile, uploadAssignmentSubmission,
-  uploadMessageStorage, uploadBankInfoStorage
+  uploadMessageStorage, uploadBankInfoStorage, uploadStudentDocuments
 };

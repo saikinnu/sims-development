@@ -75,6 +75,40 @@ const StudentSchema = new mongoose.Schema(
       public_id: { type: String },
       url: { type: String },
     },
+    contact: {
+      type: String,
+    },
+    status: {
+      type: String,
+      enum: ["active", "inactive", "graduated"],
+      default: "active",
+    },
+    student_type: {
+      type: String,
+      enum: ["Current Student", "Migrated Student"],
+      default: "Current Student",
+    },
+    previous_school_name: {
+      type: String,
+    },
+    previous_school_address: {
+      type: String,
+    },
+    previous_school_phone_number: {
+      type: String,
+    },
+    previous_school_start_date: {
+      type: Date,
+    },
+    previous_school_end_date: {
+      type: Date,
+    },
+    documents: [
+      {
+        url: { type: String },
+        name: { type: String },
+      }
+    ],
   },
   { timestamps: true }
 );

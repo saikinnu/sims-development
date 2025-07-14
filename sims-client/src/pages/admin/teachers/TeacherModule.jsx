@@ -13,8 +13,8 @@ function TeacherModule() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [filters, setFilters] = useState({
     empId: '',
-    subject: null,
-    class: null,
+    subjects_taught: null,
+    assigned_classes: null,
     searchQuery: ''
   });
   const [showFilters, setShowFilters] = useState(false);
@@ -23,10 +23,10 @@ function TeacherModule() {
   const [error, setError] = useState(null); // State for error handling
 
   // Derive options dynamically from existing teachers, safely handling undefined subjects/classes
-  const allSubjects = Array.from(new Set(teachers.flatMap(t => t.subject || []))).sort();
+  const allSubjects = Array.from(new Set(teachers.flatMap(t => t.subjects_taught || []))).sort();
   const subjectOptions = allSubjects.map(sub => ({ value: sub, label: sub }));
 
-  const allClasses = Array.from(new Set(teachers.flatMap(t => t.classes || []))).sort();
+  const allClasses = Array.from(new Set(teachers.flatMap(t => t.assigned_classes || []))).sort();
   const classOptions = allClasses.map(cls => ({ value: cls, label: cls }));
 
   // useEffect to fetch teachers when the component mounts
@@ -113,8 +113,8 @@ function TeacherModule() {
   const clearFilters = () => {
     setFilters({
       empId: '',
-      subject: null,
-      class: null,
+      subjects_taught: null,
+      assigned_classes: null,
       searchQuery: ''
     });
   };
@@ -129,14 +129,14 @@ function TeacherModule() {
     const teacherEmail = teacher.email?.toLowerCase() || '';
     const teacherPhone = teacher.phone?.toLowerCase() || '';
     const teacherAddress = teacher.address?.toLowerCase() || '';
-    const teacherClassTeacher = teacher.classTeacher?.toLowerCase() || '';
+    const teacherClassTeacher = teacher.class_teacher?.toLowerCase() || '';
 
 
     if (filters.empId && !teacherEmpId.includes(filters.empId.toLowerCase())) return false;
-    // Safely check if subject includes the filter value
-    if (filters.subject && !(teacher.subject || []).includes(filters.subject.value)) return false;
-    // Safely check if classes includes the filter value
-    if (filters.class && !(teacher.classes || []).includes(filters.class.value)) return false;
+    // Safely check if subjects_taught includes the filter value
+    if (filters.subjects_taught && !(teacher.subjects_taught || []).includes(filters.subjects_taught.value)) return false;
+    // Safely check if assigned_classes includes the filter value
+    if (filters.assigned_classes && !(teacher.assigned_classes || []).includes(filters.assigned_classes.value)) return false;
 
     if (filters.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
@@ -147,8 +147,8 @@ function TeacherModule() {
         teacherPhone,
         teacherAddress,
         // Safely map and join subjects and classes for search
-        (teacher.subject || []).map(s => s.toLowerCase()).join(' '),
-        (teacher.classes || []).map(c => c.toLowerCase()).join(' '),
+        (teacher.subjects_taught || []).map(s => s.toLowerCase()).join(' '),
+        (teacher.assigned_classes || []).map(c => c.toLowerCase()).join(' '),
         teacherClassTeacher
       ];
       return searchFields.some(field => field.includes(query));
@@ -275,8 +275,8 @@ function TeacherModule() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
               <Select
                 options={subjectOptions}
-                value={filters.subject}
-                onChange={(selected) => handleFilterChange('subject', selected)}
+                value={filters.subjects_taught}
+                onChange={(selected) => handleFilterChange('subjects_taught', selected)}
                 placeholder="Select subject..."
                 isClearable
                 className="basic-select"
@@ -288,8 +288,8 @@ function TeacherModule() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
               <Select
                 options={classOptions}
-                value={filters.class}
-                onChange={(selected) => handleFilterChange('class', selected)}
+                value={filters.assigned_classes}
+                onChange={(selected) => handleFilterChange('assigned_classes', selected)}
                 placeholder="Select class..."
                 isClearable
                 className="basic-select"
@@ -349,7 +349,6 @@ function TeacherModule() {
                   <tr key={teacher._id} className='hover:bg-gray-50'>
                     <td className='px-6 py-4 text-sm font-medium text-gray-900 break-words'>
                       {teacher.user_id}
-                      {console.log('teacher id is :', teacher.user_id)}
                     </td>
                     <td className='px-6 py-4 text-sm text-gray-900 break-words'>
                       <div className='flex items-center gap-2'>

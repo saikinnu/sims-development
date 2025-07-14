@@ -1,94 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { CheckCircle, XCircle, AlertCircle, Clock, Calendar as CalendarIcon, Ban, CalendarDays } from 'lucide-react';
-import { FaUsers, FaCheckCircle } from "react-icons/fa"; // Import FaUsers and FaCheckCircle for child selection UI
-import Calendar from './Calendar'; // Assuming Calendar.jsx is in the same directory
+import { FaUsers, FaCheckCircle } from "react-icons/fa";
+import Calendar from './Calendar';
+import { attendanceAPI, parentAPI } from '../../../services/api';
 
 const AttendanceModule = () => {
-    // Mock data for parent and children (similar to ParentPage for consistency)
-    const [parentInfo] = useState({
-        children: [
-            {
-                id: 'child1',
-                name: "Alex Johnson",
-                grade: "Grade 10",
-                rollNumber: "A1001", // Added rollNumber
-                profilePic: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&h=200&q=80",
-            },
-            {
-                id: 'child2',
-                name: "Emily Johnson",
-                grade: "Grade 8",
-                rollNumber: "E8002", // Added rollNumber
-                profilePic: "https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&h=200&q=80",
-            }
-        ]
-    });
-
-    // Sample data - updated to include data per child ID
-    const [allAttendanceDataByChild] = useState({
-        'child1': [
-            // Alex Johnson's Attendance (April, May, June 2025)
-            { date: '2025-04-01', status: 'present', checkIn: '08:00', checkOut: '15:00' },
-            { date: '2025-04-02', status: 'present', checkIn: '08:05', checkOut: '15:10' },
-            { date: '2025-04-03', status: 'half-day', checkIn: '08:30', checkOut: '12:00' },
-            { date: '2025-04-04', status: 'present', checkIn: '08:10', checkOut: '15:15' },
-            { date: '2025-04-05', status: 'absent', checkIn: null, checkOut: null, reason: 'Travel' },
-            { date: '2025-04-08', status: 'late', checkIn: '09:35', checkOut: '15:25' },
-            { date: '2025-04-10', status: 'present', checkIn: '08:15', checkOut: '15:30' },
-            { date: '2025-04-11', status: 'holiday', checkIn: null, checkOut: null, reason: 'Eid-ul-Fitr' },
-
-            { date: '2025-05-01', status: 'holiday', checkIn: null, checkOut: null, reason: 'Labour Day' },
-            { date: '2025-05-02', status: 'present', checkIn: '08:00', checkOut: '15:00' },
-            { date: '2025-05-03', status: 'present', checkIn: '08:05', checkOut: '15:10' },
-            { date: '2025-05-06', status: 'absent', checkIn: null, checkOut: null, reason: 'Sick' },
-            { date: '2025-05-07', status: 'present', checkIn: '08:10', checkOut: '15:15' },
-            { date: '2025-05-08', status: 'late', checkIn: '09:20', checkOut: '15:00' },
-            { date: '2025-05-09', status: 'half-day', checkIn: '08:30', checkOut: '12:00' },
-            { date: '2025-05-13', status: 'present', checkIn: '08:15', checkOut: '15:20' },
-
-            { date: '2025-06-03', status: 'present', checkIn: '08:00', checkOut: '15:00' },
-            { date: '2025-06-04', status: 'present', checkIn: '08:05', checkOut: '15:10' },
-            { date: '2025-06-05', status: 'absent', checkIn: null, checkOut: null, reason: 'Vacation' },
-            { date: '2025-06-06', status: 'present', checkIn: '08:10', checkOut: '15:15' },
-            { date: '2025-06-07', status: 'late', checkIn: '09:25', checkOut: '15:00' },
-            { date: '2025-06-10', status: 'present', checkIn: '08:15', checkOut: '15:20' },
-            { date: '2025-06-17', status: 'holiday', checkIn: null, checkOut: null, reason: 'Bakri Eid' },
-            { date: '2025-06-20', status: 'half-day', checkIn: '08:30', checkOut: '12:00' },
-            { date: '2025-06-21', status: 'present', checkIn: '08:20', checkOut: '15:30' },
-            { date: '2025-06-23', status: 'present', checkIn: '08:00', checkOut: '15:00' },
-        ],
-        'child2': [
-            // Emily Johnson's Attendance (April, May, June 2025)
-            { date: '2025-04-01', status: 'present', checkIn: '08:10', checkOut: '15:10' },
-            { date: '2025-04-02', status: 'absent', checkIn: null, checkOut: null, reason: 'Fever' },
-            { date: '2025-04-03', status: 'present', checkIn: '08:00', checkOut: '15:00' },
-            { date: '2025-04-04', status: 'late', checkIn: '09:00', checkOut: '15:05' },
-            { date: '2025-04-05', status: 'present', checkIn: '08:00', checkOut: '15:00' },
-            { date: '2025-04-08', status: 'present', checkIn: '08:00', checkOut: '15:00' },
-            { date: '2025-04-11', status: 'holiday', checkIn: null, checkOut: null, reason: 'Eid-ul-Fitr' },
-
-            { date: '2025-05-01', status: 'holiday', checkIn: null, checkOut: null, reason: 'Labour Day' },
-            { date: '2025-05-02', status: 'present', checkIn: '08:00', checkOut: '15:00' },
-            { date: '2025-05-03', status: 'present', checkIn: '08:05', checkOut: '15:10' },
-            { date: '2025-05-06', status: 'present', checkIn: '08:10', checkOut: '15:15' },
-            { date: '2025-05-07', status: 'absent', checkIn: null, checkOut: null, reason: 'Dental Appointment' },
-            { date: '2025-05-08', status: 'present', checkIn: '08:20', checkOut: '15:00' },
-            { date: '2025-05-09', status: 'present', checkIn: '08:30', checkOut: '15:00' },
-            { date: '2025-05-13', status: 'late', checkIn: '09:15', checkOut: '15:20' },
-
-            { date: '2025-06-03', status: 'present', checkIn: '08:00', checkOut: '15:00' },
-            { date: '2025-06-04', status: 'present', checkIn: '08:05', checkOut: '15:10' },
-            { date: '2025-06-05', status: 'present', checkIn: '08:10', checkOut: '15:15' },
-            { date: '2025-06-06', status: 'absent', checkIn: null, checkOut: null, reason: 'Family Event' },
-            { date: '2025-06-07', status: 'present', checkIn: '08:25', checkOut: '15:00' },
-            { date: '2025-06-10', status: 'present', checkIn: '08:15', checkOut: '15:20' },
-            { date: '2025-06-17', status: 'holiday', checkIn: null, checkOut: null, reason: 'Bakri Eid' },
-            { date: '2025-06-20', status: 'present', checkIn: '08:30', checkOut: '15:00' },
-            { date: '2025-06-21', status: 'late', checkIn: '09:20', checkOut: '15:30' },
-            { date: '2025-06-23', status: 'present', checkIn: '08:00', checkOut: '15:00' },
-        ]
-    });
-
+    const [parentInfo, setParentInfo] = useState({ children: [] });
     const [selectedChildId, setSelectedChildId] = useState(null);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(null);
@@ -100,33 +18,90 @@ const AttendanceModule = () => {
         halfDays: 0,
         holidays: 0
     });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    // Set initial selected child and attendance data
+    // Fetch parent profile and children data
     useEffect(() => {
-        if (parentInfo.children && parentInfo.children.length > 0) {
-            setSelectedChildId(parentInfo.children[0].id);
-        }
-    }, [parentInfo.children]);
+        const fetchParentData = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                
+                // Get parent profile with linked students
+                const response = await parentAPI.getMyProfile();
+                const { parent, linkedStudents } = response.data;
+                
+                console.log('Parent data:', parent);
+                console.log('Linked students:', linkedStudents);
+                
+                // Transform students data to match the expected format
+                const children = linkedStudents.map(student => ({
+                    id: student._id,
+                    name: student.full_name,
+                    grade: student.class_id ? student.class_id.class_name : 'N/A',
+                    rollNumber: student.admission_number,
+                    profilePic: student.profile_image?.url || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&h=200&q=80",
+                }));
 
-    // Filter attendance data for the current month and selected child
+                console.log('Transformed children data:', children);
+                setParentInfo({ children });
+                
+                // Set first child as selected if available
+                if (children.length > 0) {
+                    setSelectedChildId(children[0].id);
+                }
+            } catch (err) {
+                console.error('Error fetching parent data:', err);
+                setError('Failed to load children data. Please try again.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchParentData();
+    }, []);
+
+    // Fetch attendance data for selected child and current month
     useEffect(() => {
-        if (!selectedChildId) {
-            setMonthlyAttendanceData([]);
-            return;
-        }
+        const fetchAttendanceData = async () => {
+            if (!selectedChildId) {
+                setMonthlyAttendanceData([]);
+                return;
+            }
 
-        const year = currentMonth.getFullYear();
-        const month = currentMonth.getMonth(); // 0-indexed month
+            try {
+                setLoading(true);
+                const year = currentMonth.getFullYear();
+                const month = currentMonth.getMonth() + 1; // 1-indexed month for API
 
-        const childAttendance = allAttendanceDataByChild[selectedChildId] || [];
+                // Get monthly attendance report for the selected student
+                const response = await attendanceAPI.getMonthlyReport(selectedChildId, month, year);
+                const { records } = response.data;
 
-        const filteredData = childAttendance.filter(item => {
-            const itemDate = new Date(item.date);
-            return itemDate.getFullYear() === year && itemDate.getMonth() === month;
-        });
-        setMonthlyAttendanceData(filteredData);
-        setSelectedDate(null); // Clear selected date when child or month changes
-    }, [currentMonth, selectedChildId, allAttendanceDataByChild]);
+                console.log('Raw attendance data:', records);
+
+                // Transform data to match the expected format
+                const transformedData = records.map(item => ({
+                    date: new Date(item.date).toISOString().split('T')[0],
+                    status: item.status.toLowerCase(),
+                    reason: item.remarks || null
+                }));
+
+                console.log('Transformed attendance data:', transformedData);
+                setMonthlyAttendanceData(transformedData);
+                setSelectedDate(null); // Clear selected date when child or month changes
+            } catch (err) {
+                console.error('Error fetching attendance data:', err);
+                setError('Failed to load attendance data. Please try again.');
+                setMonthlyAttendanceData([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAttendanceData();
+    }, [currentMonth, selectedChildId]);
 
     // Calculate attendance stats for the monthlyAttendanceData
     useEffect(() => {
@@ -134,6 +109,7 @@ const AttendanceModule = () => {
             const present = monthlyAttendanceData.filter(a => a.status === 'present').length;
             const absent = monthlyAttendanceData.filter(a => a.status === 'absent').length;
             const late = monthlyAttendanceData.filter(a => a.status === 'late').length;
+            // Note: Backend doesn't have half-day or holiday status, so these will always be 0
             const halfDays = monthlyAttendanceData.filter(a => a.status === 'half-day').length;
             const holidays = monthlyAttendanceData.filter(a => a.status === 'holiday').length;
 
@@ -169,6 +145,27 @@ const AttendanceModule = () => {
 
     // Get the currently selected child object
     const selectedChild = parentInfo.children.find(child => child.id === selectedChildId);
+
+    if (loading && parentInfo.children.length === 0) {
+        return (
+            <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
+                <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
+                <div className="bg-red-50 p-4 rounded-lg text-red-800 flex items-center justify-center mb-6 shadow-sm">
+                    <AlertCircle className="mr-2" size={20} />
+                    {error}
+                </div>
+            </div>
+        );
+    }
 
     return (
     <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
@@ -284,25 +281,13 @@ const AttendanceModule = () => {
                                         )}
                                     </div>
 
-                                    {(selectedDate.attendance.checkIn || selectedDate.attendance.checkOut) && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="border rounded-lg p-4">
-                                                <h3 className="text-sm font-medium text-gray-500 mb-2">Check In</h3>
-                                                <div className="flex items-center">
-                                                    <Clock className="text-gray-400 mr-2" size={18} />
-                                                    <span className="text-lg font-medium">
-                                                        {selectedDate.attendance.checkIn || '--:--'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="border rounded-lg p-4">
-                                                <h3 className="text-sm font-medium text-gray-500 mb-2">Check Out</h3>
-                                                <div className="flex items-center">
-                                                    <Clock className="text-gray-400 mr-2" size={18} />
-                                                    <span className="text-lg font-medium">
-                                                        {selectedDate.attendance.checkOut || '--:--'}
-                                                    </span>
-                                                </div>
+                                    {selectedDate.attendance.reason && (
+                                        <div className="border rounded-lg p-4 mt-4">
+                                            <h3 className="text-sm font-medium text-gray-500 mb-2">Remarks</h3>
+                                            <div className="flex items-center">
+                                                <span className="text-lg font-medium">
+                                                    {selectedDate.attendance.reason}
+                                                </span>
                                             </div>
                                         </div>
                                     )}

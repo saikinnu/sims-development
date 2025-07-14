@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Filter, X, Search, CalendarIcon } from 'lucide-react';
 import Select from 'react-select';
+import axios from 'axios';
 import EventDetails from './EventDetails';
 
 // Helper function to format date to DD-MM-YYYY
@@ -47,59 +48,32 @@ function EventsModule() {
   const [showFilters, setShowFilters] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
 
-  // Dummy data for events, with dynamic status calculation
+  // Fetch events from backend API
   useEffect(() => {
-    const rawEvents = [
-      {
-        id: 'evt003',
-        title: 'Parent-Teacher Meeting',
-        description: 'Discussion regarding student progress.',
-        eventType: ['Meeting'],
-        startDate: '2025-08-01',
-        endDate: null,
-        eventName: 'Parent-Teacher Meeting',
-        targetAudience: 'Parents, Teachers',
-      },
-      {
-        id: 'evt004',
-        title: 'Annual Cultural Fest',
-        description: 'A celebration of diverse cultures with performances and exhibitions.',
-        eventType: ['Cultural'],
-        startDate: '2025-06-20',
-        endDate: '2025-06-22',
-        eventName: 'Harmony Fest',
-        targetAudience: 'All',
-      },
-      {
-        id: 'evt005',
-        title: 'Graduation Ceremony',
-        description: 'Celebrating the achievements of the graduating class.',
-        eventType: ['Academic'],
-        startDate: '2024-11-10',
-        endDate: '2024-11-10',
-        eventName: 'Graduation Day',
-        targetAudience: 'Students, Parents, Staff',
-      },
-      {
-        id: 'evt006',
-        title: 'School Board Meeting',
-        description: 'Quarterly meeting of the school board members.',
-        eventType: ['Meeting'],
-        status: 'cancelled',
-        startDate: '2025-09-05',
-        endDate: '2025-09-05',
-        eventName: 'Board Meeting Q3',
-        targetAudience: 'Staff',
+    const fetchEvents = async () => {
+      try {
+        const token = JSON.parse(localStorage.getItem('authToken'));
+        const response = await axios.get('http://localhost:5000/api/events/', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        // Map backend events to frontend format if needed
+        const eventsWithStatus = (response.data || []).map(event => ({
+          ...event,
+          // If status is not set or is null, calculate it from dates
+          status: event.status === 'cancelled' ? 'cancelled' : getEventStatus(event.startDate, event.endDate),
+          // Ensure eventType is always an array
+          eventType: Array.isArray(event.eventType) ? event.eventType : (event.eventType ? [event.eventType] : []),
+          // Ensure targetAudience is always a string for display (join if array)
+          targetAudience: Array.isArray(event.targetAudience) ? event.targetAudience.join(', ') : (event.targetAudience || ''),
+        }));
+        setEvents(eventsWithStatus);
+      } catch (error) {
+        setEvents([]);
+        // Optionally, show error to user
+        // console.error('Failed to fetch events:', error);
       }
-    ];
-
-    // Map through events to set their dynamic status based on dates
-    const eventsWithDynamicStatus = rawEvents.map(event => ({
-      ...event,
-      status: event.status === 'cancelled' ? 'cancelled' : getEventStatus(event.startDate, event.endDate)
-    }));
-
-    setEvents(eventsWithDynamicStatus);
+    };
+    fetchEvents();
   }, []);
 
   const statusOptions = [

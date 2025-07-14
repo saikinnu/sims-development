@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AddParent from './AddParent';
 import ParentDetails from './ParentDetails';
 import { Edit, Trash, Plus, Filter, X, Search } from 'lucide-react'; 
 import Select from 'react-select'; 
+import axios from 'axios';
 
 function ParentModule() {
   const [parents, setParents] = useState([]);
@@ -26,29 +27,134 @@ function ParentModule() {
     { value: 5, label: '5+ Children' },
   ];
 
-  const handleAddParent = (data) => {
-    setParents([...parents, data]);
+  // Fetch parents from backend on mount
+  useEffect(() => {
+    const fetchParents = async () => {
+      try {
+        const token = JSON.parse(localStorage.getItem('authToken'));
+        const response = await axios.get('http://localhost:5000/api/parents/', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setParents(response.data.map(p => ({
+          parentId: p.user_id,
+          name: p.full_name,
+          email: p.email,
+          phone: p.phone,
+          address: p.address,
+          childrenCount: p.childrenCount,
+          _id: p._id, // for edit/delete
+        })));
+      } catch (err) {
+        console.error('Error fetching parents:', err);
+      }
+    };
+    fetchParents();
+  }, []);
+
+  // Add parent (POST)
+  const handleAddParent = async (data) => {
+    try {
+      const token = JSON.parse(localStorage.getItem('authToken'));
+      const response = await axios.post(
+        'http://localhost:5000/api/parents/',
+        {
+          user_id: data.user_id ?? data.parentId,
+          full_name: data.full_name ?? data.name,
+          email: data.email,
+          phone: data.phone,
+          address: data.address,
+          childrenCount: data.childrenCount,
+          password: data.password, // Always send password
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+      setParents([...parents, {
+        parentId: response.data.user_id,
+        name: response.data.full_name,
+        email: response.data.email,
+        phone: response.data.phone,
+        address: response.data.address,
+        childrenCount: response.data.childrenCount,
+        _id: response.data._id,
+      }]);
+      setShowAddModal(false);
+    } catch (err) {
+      console.error('Error adding parent:', err);
+    }
   };
 
+  // Map frontend fields to backend fields for modal
+  const mapToBackendFields = (parent) => ({
+    ...parent,
+    user_id: parent.parentId ?? parent.user_id,
+    full_name: parent.name ?? parent.full_name,
+  });
+
+  // View parent
   const handleView = (parent) => {
-    setSelectedParent(parent);
+    setSelectedParent(mapToBackendFields(parent));
     setIsEditMode(false);
     setShowDetailsModal(true);
   };
 
+  // Edit parent (open modal)
   const handleEdit = (parent) => {
-    setSelectedParent(parent);
+    setSelectedParent(mapToBackendFields(parent));
     setIsEditMode(true);
     setShowDetailsModal(true);
   };
 
-  const handleUpdate = (updated) => {
-    setParents(parents.map((p) => (p.parentId === updated.parentId ? updated : p)));
+  // Update parent (PUT)
+  const handleUpdate = async (updated) => {
+    try {
+      const token = JSON.parse(localStorage.getItem('authToken'));
+      const updatePayload = {
+        full_name: updated.full_name ?? updated.name,
+        email: updated.email,
+        phone: updated.phone,
+        address: updated.address,
+        childrenCount: updated.childrenCount,
+      };
+      if (updated.password && updated.password.length > 0) {
+        updatePayload.password = updated.password;
+      }
+      const response = await axios.put(
+        `http://localhost:5000/api/parents/${updated._id}`,
+        updatePayload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+      setParents(parents.map((p) => (p._id === updated._id ? {
+        ...p,
+        ...updated,
+      } : p)));
+      setShowDetailsModal(false);
+    } catch (err) {
+      console.error('Error updating parent:', err);
+    }
   };
 
-  const handleDelete = (id) => {
+  // Delete parent (DELETE)
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this parent record?')) {
-        setParents(parents.filter((p) => p.parentId !== id));
+      try {
+        const token = JSON.parse(localStorage.getItem('authToken'));
+        await axios.delete(`http://localhost:5000/api/parents/${id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setParents(parents.filter((p) => p._id !== id));
+      } catch (err) {
+        console.error('Error deleting parent:', err);
+      }
     }
   };
 
@@ -69,31 +175,29 @@ function ParentModule() {
 
   const activeFilterCount = Object.values(filters).filter(f => f && (typeof f !== 'object' || (f && f.value))).length;
 
+  // Filtering logic (use mapped fields)
   const filteredParents = parents.filter(parent => {
     if (filters.parentId && !parent.parentId.toLowerCase().includes(filters.parentId.toLowerCase())) return false;
-    
     // ChildrenCount filter logic
     if (filters.childrenCount) {
-        if (filters.childrenCount.value === 5) { // Assuming '5+' includes 5 and more
-            if (parent.childrenCount < 5) return false;
-        } else if (parent.childrenCount !== filters.childrenCount.value) {
-            return false;
-        }
+      if (filters.childrenCount.value === 5) {
+        if (parent.childrenCount < 5) return false;
+      } else if (parent.childrenCount !== filters.childrenCount.value) {
+        return false;
+      }
     }
-
     if (filters.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
       const searchFields = [
-        parent.parentId.toLowerCase(),
-        parent.name.toLowerCase(),
-        parent.email.toLowerCase(),
-        parent.phone.toLowerCase(),
-        parent.address.toLowerCase(),
-        String(parent.childrenCount).toLowerCase(), // Include childrenCount in search
+        parent.parentId?.toLowerCase() || '',
+        parent.name?.toLowerCase() || '',
+        parent.email?.toLowerCase() || '',
+        parent.phone?.toLowerCase() || '',
+        parent.address?.toLowerCase() || '',
+        String(parent.childrenCount).toLowerCase(),
       ];
       return searchFields.some(field => field.includes(query));
     }
-
     return true;
   });
 
@@ -254,26 +358,26 @@ function ParentModule() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredParents.length > 0 ? (
                   filteredParents.map((parent) => (
-                    <tr key={parent.parentId} className='hover:bg-gray-50'>
-                      <td className='px-6 py-4 text-sm font-medium text-gray-900 break-words'> {/* Removed whitespace-nowrap, added break-words */}
+                    <tr key={parent._id} className='hover:bg-gray-50'>
+                      <td className='px-6 py-4 text-sm font-medium text-gray-900 break-words'>
                         {parent.parentId}
                       </td>
-                      <td className='px-6 py-4 text-sm text-gray-900 break-words'> {/* Removed whitespace-nowrap, added break-words */}
+                      <td className='px-6 py-4 text-sm text-gray-900 break-words'>
                         <div className='flex items-center gap-2'>
                           {parent.image && <img src={parent.image} alt='Parent Avatar' className='w-8 h-8 rounded-full object-cover' />}
                           {parent.name}
                         </div>
                       </td>
-                      <td className='px-6 py-4 text-sm text-gray-500 break-words'> {/* Removed whitespace-nowrap, added break-words */}
+                      <td className='px-6 py-4 text-sm text-gray-500 break-words'>
                         {parent.email}
                       </td>
-                      <td className='px-6 py-4 text-sm text-gray-500 break-words'> {/* Removed whitespace-nowrap, added break-words */}
+                      <td className='px-6 py-4 text-sm text-gray-500 break-words'>
                         {parent.phone}
                       </td>
-                      <td className='px-6 py-4 text-sm text-gray-500 break-words'> {/* Removed whitespace-nowrap, added break-words */}
+                      <td className='px-6 py-4 text-sm text-gray-500 break-words'>
                         {parent.childrenCount}
                       </td>
-                      <td className='px-6 py-4 text-sm text-gray-500 break-words'> {/* Removed whitespace-nowrap, added break-words */}
+                      <td className='px-6 py-4 text-sm text-gray-500 break-words'>
                         {parent.address}
                       </td>
                       <td className='px-6 py-4 text-right text-sm font-medium'>
@@ -293,7 +397,7 @@ function ParentModule() {
                             <Edit size={16} />
                           </button>
                           <button
-                            onClick={() => handleDelete(parent.parentId)}
+                            onClick={() => handleDelete(parent._id)}
                             className="text-red-600 hover:text-red-900 p-1 rounded-md hover:bg-red-50"
                             title="Delete"
                           >

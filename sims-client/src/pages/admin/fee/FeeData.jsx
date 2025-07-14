@@ -1,263 +1,97 @@
-// FeeData.js
-export const feeRecordsData = [
-  {
-    id: 1,
-    studentId: 'STU001',
-    studentName: 'Rahul Sharma',
-    class: '10',
-    section: 'A',
-    feeType: '1st Term',
-    amount: 1500,
-    dueDate: '2023-06-15',
-    status: 'Paid',
-    paymentDate: '2023-06-10',
-    paymentMethod: 'Online'
-  },
-  {
-    id: 2,
-    studentId: 'STU002',
-    studentName: 'Priya Patel',
-    class: '9',
-    section: 'B',
-    feeType: '2nd Term',
-    amount: 800,
-    dueDate: '2023-06-20',
-    status: 'Pending',
-    paymentDate: '',
-    paymentMethod: ''
-  },
-  {
-    id: 3,
-    studentId: 'STU003',
-    studentName: 'Amit Singh',
-    class: '11',
-    section: 'C',
-    feeType: '3rd Term',
-    amount: 300,
-    dueDate: '2023-05-30',
-    status: 'Overdue',
-    paymentDate: '',
-    paymentMethod: ''
-  },
-  {
-    id: 4,
-    studentId: 'STU004',
-    studentName: 'Neha Gupta',
-    class: '12',
-    section: 'A',
-    feeType: '1st Term',
-    amount: 1800,
-    dueDate: '2023-06-18',
-    status: 'Paid',
-    paymentDate: '2023-06-15',
-    paymentMethod: 'Cash'
-  },
-  {
-    id: 5,
-    studentId: 'STU005',
-    studentName: 'Vikram Joshi',
-    class: '10',
-    section: 'B',
-    feeType: '2nd Term',
-    amount: 500,
-    dueDate: '2023-06-25',
-    status: 'Pending',
-    paymentDate: '',
-    paymentMethod: ''
-  },
-  {
-    id: 6,
-    studentId: 'STU006',
-    studentName: 'Ananya Reddy',
-    class: '9',
-    section: 'A',
-    feeType: '1st Term',
-    amount: 1400,
-    dueDate: '2023-06-10',
-    status: 'Paid',
-    paymentDate: '2023-06-05',
-    paymentMethod: 'Online'
-  },
-  {
-    id: 7,
-    studentId: 'STU007',
-    studentName: 'Rohan Malhotra',
-    class: '11',
-    section: 'B',
-    feeType: '3rd Term',
-    amount: 600,
-    dueDate: '2023-06-30',
-    status: 'Pending',
-    paymentDate: '',
-    paymentMethod: ''
-  },
-  {
-    id: 8,
-    studentId: 'STU008',
-    studentName: 'Sneha Verma',
-    class: '12',
-    section: 'C',
-    feeType: '1st Term',
-    amount: 2000,
-    dueDate: '2023-06-22',
-    status: 'Paid',
-    paymentDate: '2023-06-20',
-    paymentMethod: 'Cheque'
-  },
-  {
-    id: 9,
-    studentId: 'STU009',
-    studentName: 'Arjun Kapoor',
-    class: '10',
-    section: 'A',
-    feeType: '2nd Term',
-    amount: 900,
-    dueDate: '2023-05-25',
-    status: 'Overdue',
-    paymentDate: '',
-    paymentMethod: ''
-  },
-  {
-    id: 10,
-    studentId: 'STU010',
-    studentName: 'Isha Nair',
-    class: '9',
-    section: 'B',
-    feeType: '3rd Term',
-    amount: 350,
-    dueDate: '2023-06-28',
-    status: 'Pending',
-    paymentDate: '',
-    paymentMethod: ''
-  },
-  {
-    id: 11,
-    studentId: 'STU011',
-    studentName: 'Karan Mehta',
-    class: '11',
-    section: 'A',
-    feeType: '1st Term',
-    amount: 1700,
-    dueDate: '2023-06-15',
-    status: 'Paid',
-    paymentDate: '2023-06-12',
-    paymentMethod: 'Online'
-  },
-  {
-    id: 12,
-    studentId: 'STU012',
-    studentName: 'Divya Choudhary',
-    class: '12',
-    section: 'B',
-    feeType: '2nd Term',
-    amount: 550,
-    dueDate: '2023-06-20',
-    status: 'Pending',
-    paymentDate: '',
-    paymentMethod: ''
-  },
-  {
-    id: 13,
-    studentId: 'STU013',
-    studentName: 'Ravi Kumar',
-    class: '10',
-    section: 'C',
-    feeType: '3rd Term',
-    amount: 650,
-    dueDate: '2023-05-20',
-    status: 'Overdue',
-    paymentDate: '',
-    paymentMethod: ''
-  },
-  {
-    id: 14,
-    studentId: 'STU014',
-    studentName: 'Pooja Shah',
-    class: '9',
-    section: 'A',
-    feeType: '1st Term',
-    amount: 1300,
-    dueDate: '2023-06-18',
-    status: 'Paid',
-    paymentDate: '2023-06-15',
-    paymentMethod: 'Cash'
-  },
-  {
-    id: 15,
-    studentId: 'STU015',
-    studentName: 'Sahil Bhatia',
-    class: '11',
-    section: 'B',
-    feeType: '2nd Term',
-    amount: 850,
-    dueDate: '2023-06-25',
-    status: 'Pending',
-    paymentDate: '',
-    paymentMethod: ''
-  },
-  {
-    id: 16,
-    studentId: 'STU016',
-    studentName: 'Meera Desai',
-    class: '12',
-    section: 'C',
-    feeType: '3rd Term',
-    amount: 400,
-    dueDate: '2023-06-30',
-    status: 'Pending',
-    paymentDate: '',
-    paymentMethod: ''
-  },
-  {
-    id: 17,
-    studentId: 'STU017',
-    studentName: 'Aryan Singh',
-    class: '10',
-    section: 'A',
-    feeType: '1st Term',
-    amount: 1600,
-    dueDate: '2023-06-10',
-    status: 'Paid',
-    paymentDate: '2023-06-08',
-    paymentMethod: 'Online'
-  },
-  {
-    id: 18,
-    studentId: 'STU018',
-    studentName: 'Tanvi Patel',
-    class: '9',
-    section: 'B',
-    feeType: '2nd Term',
-    amount: 450,
-    dueDate: '2023-06-22',
-    status: 'Pending',
-    paymentDate: '',
-    paymentMethod: ''
-  },
-  {
-    id: 19,
-    studentId: 'STU019',
-    studentName: 'Vivek Rao',
-    class: '11',
-    section: 'A',
-    feeType: '3rd Term',
-    amount: 700,
-    dueDate: '2023-05-30',
-    status: 'Overdue',
-    paymentDate: '',
-    paymentMethod: ''
-  },
-  {
-    id: 20,
-    studentId: 'STU020',
-    studentName: 'Anjali Iyer',
-    class: '12',
-    section: 'B',
-    feeType: '1st Term',
-    amount: 1900,
-    dueDate: '2023-06-20',
-    status: 'Paid',
-    paymentDate: '2023-06-18',
-    paymentMethod: 'Cheque'
+// FeeData.jsx
+// This file provides API calls for fee records.
+import { feeAPI } from '../../../services/api';
+
+/**
+ * Fetches all fee records from the backend
+ * @returns {Promise<Array>} Promise that resolves to array of fee records
+ */
+export const fetchFeeRecords = async () => {
+  try {
+    const response = await feeAPI.getAllFees();
+    return response.data || [];
+  } catch (error) {
+    console.error('Error fetching fee records:', error);
+    return [];
   }
-];
+};
+
+/**
+ * Fetches fee records for a specific student
+ * @param {string} studentId - The student ID
+ * @returns {Promise<Array>} Promise that resolves to array of fee records for the student
+ */
+export const fetchStudentFees = async (studentId) => {
+  try {
+    const response = await feeAPI.getStudentFees(studentId);
+    return response.data || [];
+  } catch (error) {
+    console.error('Error fetching student fees:', error);
+    return [];
+  }
+};
+
+/**
+ * Creates a new fee record
+ * @param {Object} feeData - The fee data to create
+ * @returns {Promise<Object>} Promise that resolves to the created fee record
+ */
+export const createFeeRecord = async (feeData) => {
+  try {
+    const response = await feeAPI.createFee(feeData);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating fee record:', error);
+    throw error;
+  }
+};
+
+/**
+ * Updates an existing fee record
+ * @param {string} feeId - The fee ID to update
+ * @param {Object} feeData - The updated fee data
+ * @returns {Promise<Object>} Promise that resolves to the updated fee record
+ */
+export const updateFeeRecord = async (feeId, feeData) => {
+  try {
+    const response = await feeAPI.updateFee(feeId, feeData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating fee record:', error);
+    throw error;
+  }
+};
+
+/**
+ * Deletes a fee record
+ * @param {string} feeId - The fee ID to delete
+ * @returns {Promise<Object>} Promise that resolves to the deletion result
+ */
+export const deleteFeeRecord = async (feeId) => {
+  try {
+    const response = await feeAPI.deleteFee(feeId);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting fee record:', error);
+    throw error;
+  }
+};
+
+/**
+ * Processes a term fee payment
+ * @param {string} feeId - The fee ID
+ * @param {Object} paymentData - The payment data
+ * @returns {Promise<Object>} Promise that resolves to the payment result
+ */
+export const payTermFee = async (feeId, paymentData) => {
+  try {
+    const response = await feeAPI.payTermFee(feeId, paymentData);
+    return response.data;
+  } catch (error) {
+    console.error('Error processing term fee payment:', error);
+    throw error;
+  }
+};
+
+// Export empty array as default for backward compatibility
+export const feeRecordsData = [];

@@ -5,6 +5,8 @@ const termSchema = new mongoose.Schema({
   amount_due: Number,
   amount_paid: Number,
   payment_date: Date,
+  payment_method: String, // Added
+  due_date: Date, // Added
   receipt_url: String,
   status: {
     type: String,
@@ -20,7 +22,18 @@ const FeeSchema = new mongoose.Schema(
       ref: "Student",
       required: true,
     },
-    due_date: Date,
+    student_name: { // Added for easier population
+      type: String,
+    },
+    class: { // Added
+      type: String,
+    },
+    section: { // Added
+      type: String,
+    },
+    amount: { // Total fee for the student
+      type: Number,
+    },
     first_term: termSchema,
     second_term: termSchema,
     third_term: termSchema,

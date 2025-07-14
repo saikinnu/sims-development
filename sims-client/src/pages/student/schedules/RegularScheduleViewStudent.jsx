@@ -1,5 +1,6 @@
 // RegularScheduleViewStudent.jsx
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 // Define days of the week in order for consistent display
 const DaysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];

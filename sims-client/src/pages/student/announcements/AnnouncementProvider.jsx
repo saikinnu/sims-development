@@ -1,5 +1,5 @@
 // src/contexts/AnnouncementProvider.jsx (or src/components/AnnouncementProvider.jsx, choose your path)
-import React, { useState, createContext, useContext } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 
 // Create a Context for announcements
 const AnnouncementContext = createContext(null);
@@ -14,18 +14,47 @@ export const useAnnouncements = () => {
 };
 
 const AnnouncementProvider = ({ children }) => {
-  const [announcements, setAnnouncements] = useState([
-    {
-      id: 'ann-001',
-      title: 'School Reopening on Monday!',
-      content: 'Exciting news! School will reopen on June 24th after the short break. We look forward to seeing everyone back on campus, ready for a productive second half of the term.',
-      target: ['all'],
-      startDate: '2025-06-19', // Today
-      endDate: '2025-06-23', // Still active
-      status: 'active',
-      createdAt: '2025-06-18T10:30:00Z'
-    }
-  ]);
+  const [announcements, setAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = JSON.parse(localStorage.getItem('authToken'));
+        if (!token) {
+          throw new Error('No authentication token found. Please log in again.');
+        }
+        
+        const res = await fetch('http://localhost:5000/api/announcements', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!res.ok) throw new Error('Failed to fetch announcements');
+        const data = await res.json();
+        setAnnouncements(
+          data.map((a) => ({
+            ...a,
+            // Normalize fields if needed
+            id: a._id || a.id,
+            startDate: a.startDate ? a.startDate.slice(0, 10) : '',
+            endDate: a.endDate ? a.endDate.slice(0, 10) : '',
+            target: Array.isArray(a.target) ? a.target.map(t => t.toLowerCase()) : [],
+            status: a.status,
+          }))
+        );
+      } catch (err) {
+        setError(err.message || 'Error fetching announcements. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAnnouncements();
+  }, []);
 
   const handleAddAnnouncement = (newAnn) => {
     setAnnouncements(prev => [...prev, newAnn]);
@@ -40,7 +69,7 @@ const AnnouncementProvider = ({ children }) => {
   };
 
   return (
-    <AnnouncementContext.Provider value={{ announcements, handleAddAnnouncement, handleUpdateAnnouncement, handleDeleteAnnouncement }}>
+    <AnnouncementContext.Provider value={{ announcements, loading, error, handleAddAnnouncement, handleUpdateAnnouncement, handleDeleteAnnouncement }}>
       {children}
     </AnnouncementContext.Provider>
   );

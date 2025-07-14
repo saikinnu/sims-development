@@ -67,7 +67,11 @@ function ParentModule() {
   };
 
   const handleUpdate = (updated) => {
-    setParents(parents.map((p) => (p.user_id === updated.user_id ? updated : p)));
+    const currentUserId = typeof updated.user_id === 'object' ? updated.user_id.user_id : updated.user_id;
+    setParents(parents.map((p) => {
+      const pUserId = typeof p.user_id === 'object' ? p.user_id.user_id : p.user_id;
+      return pUserId === currentUserId ? updated : p;
+    }));
   };
 
   const handleDelete = async (id) => {
@@ -88,7 +92,10 @@ function ParentModule() {
         });
 
         // Update local state only after successful deletion
-        setParents(parents.filter((p) => p.user_id !== id));
+        setParents(parents.filter((p) => {
+          const pUserId = typeof p.user_id === 'object' ? p.user_id.user_id : p.user_id;
+          return pUserId !== id;
+        }));
 
       } catch (err) {
         console.error('Error deleting parent:', {
@@ -119,7 +126,8 @@ function ParentModule() {
   const activeFilterCount = Object.values(filters).filter(f => f && (typeof f !== 'object' || (f && f.value))).length;
 
   const filteredParents = parents.filter(parent => {
-    if (filters.user_id && !parent.user_id.toLowerCase().includes(filters.user_id.toLowerCase())) return false;
+    const userId = typeof parent.user_id === 'object' ? parent.user_id.user_id : parent.user_id;
+    if (filters.user_id && !userId.toLowerCase().includes(filters.user_id.toLowerCase())) return false;
 
     // ChildrenCount filter logic
     if (filters.childrenCount) {
@@ -132,8 +140,9 @@ function ParentModule() {
 
     if (filters.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
+      const userId = typeof parent.user_id === 'object' ? parent.user_id.user_id : parent.user_id;
       const searchFields = [
-        parent.user_id.toLowerCase(),
+        userId.toLowerCase(),
         parent.full_name.toLowerCase(),
         parent.email.toLowerCase(),
         parent.phone.toLowerCase(),
@@ -302,9 +311,9 @@ function ParentModule() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredParents.length > 0 ? (
                 filteredParents.map((parent) => (
-                  <tr key={parent.user_id} className='hover:bg-gray-50'>
+                  <tr key={typeof parent.user_id === 'object' ? parent.user_id.user_id : parent.user_id} className='hover:bg-gray-50'>
                     <td className='px-6 py-4 text-sm font-medium text-gray-900 break-words'> {/* Removed whitespace-nowrap, added break-words */}
-                      {parent.user_id}
+                      {typeof parent.user_id === 'object' ? parent.user_id.user_id : parent.user_id}
                     </td>
                     <td className='px-6 py-4 text-sm text-gray-900 break-words'> {/* Removed whitespace-nowrap, added break-words */}
                       <div className='flex items-center gap-2'>

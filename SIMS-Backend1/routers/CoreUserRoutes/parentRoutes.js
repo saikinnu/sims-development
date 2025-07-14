@@ -9,13 +9,17 @@ const { uploadParentProfile } = require('../../middlewares/upload');
 router.post(
   '/',
   protect,
-  checkRole('admin', 'superadmin'),
+  checkRole('admin', 'superadmin','teacher'),
   uploadParentProfile.single('profileImage'),
   parentController.createParent
 );
 
 // READ ALL
 router.get('/', protect, parentController.getAllParents);
+
+// Get logged-in parent profile and linked students (MUST come before /:id routes)
+router.get('/me', protect, checkRole('parent'), parentController.getMyParentProfile);
+router.get('/dashboard', protect, checkRole('parent'), parentPortalController.getParentDashboard);
 
 // READ ONE
 router.get('/:id', protect, parentController.getParentById);
@@ -24,7 +28,7 @@ router.get('/:id', protect, parentController.getParentById);
 router.put(
   '/:id',
   protect,
-  checkRole('admin', 'superadmin'),
+  checkRole('admin', 'superadmin','teacher'),
   uploadParentProfile.single('profileImage'),
   parentController.updateParent
 );
@@ -33,12 +37,8 @@ router.put(
 router.delete(
   '/:id',
   protect,
-  checkRole('admin','superadmin'),
+  checkRole('admin','superadmin','teacher'),
   parentController.deleteParent
 );
-
-// Get logged-in parent profile and linked students
-router.get('/me', protect, checkRole('parent'), parentController.getMyParentProfile);
-router.get('/dashboard', protect, checkRole('parent'), parentPortalController.getParentDashboard);
 
 module.exports = router;

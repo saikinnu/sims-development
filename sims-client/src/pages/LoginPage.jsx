@@ -77,6 +77,7 @@ const LoginPage = ({ onClose, onForgotPasswordClick }) => {
       console.log('a val is :',a);
 
       localStorage.setItem('authRole', JSON.stringify(role));
+      localStorage.setItem('authUserID', JSON.stringify(user_id));
   
       // Navigate to dashboard based on role
       switch (role) {

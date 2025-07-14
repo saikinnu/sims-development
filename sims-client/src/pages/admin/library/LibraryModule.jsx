@@ -1,80 +1,54 @@
 // src/pages/admin/library/LibraryModule.jsx
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import AddEditResourceModal from './AddEditResourceModal';
 import ResourceCard from './ResourceCard';
-import { FiPlus } from 'react-icons/fi'; // Plus icon for "Add Resource" button
-import { FaBookOpen, FaSearch } from 'react-icons/fa'; // Icons for library and search
-import { X, Filter, Search, Plus } from 'lucide-react'; // Icons from lucide-react
+import { FiPlus } from 'react-icons/fi';
+import { FaBookOpen, FaSearch } from 'react-icons/fa';
+import { X, Filter, Search, Plus } from 'lucide-react';
+import axios from 'axios';
+
+const API_URL = 'http://localhost:5000/api/resources';
+
+// Helper to get auth headers
+const getAuthHeaders = () => {
+  const token = JSON.parse(localStorage.getItem('authToken'));
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 const LibraryModule = () => {
-  // State for all library resources (in-memory mock data)
-  const [allResources, setAllResources] = useState([
-    {
-      id: 'res_001',
-      subject: 'Mathematics',
-      topic: 'Algebra Basics',
-      classes: ['Class 8', 'Class 9'],
-      description: 'Comprehensive guide to fundamental algebraic concepts.',
-      type: 'pdf',
-      url: 'math_algebra_basics.pdf',
-      title: 'Algebra Basics Textbook',
-    },
-    {
-      id: 'res_002',
-      subject: 'Science',
-      topic: 'Photosynthesis Cycle',
-      classes: ['Class 6', 'Class 7', 'Class 8'],
-      description: 'Visual explanation of how plants make food.',
-      type: 'video',
-      url: 'https://youtube.com/photosynthesis_vid',
-      title: 'Photosynthesis Animated Video',
-    },
-    {
-      id: 'res_003',
-      subject: 'English',
-      topic: 'Grammar Rules',
-      classes: ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10'],
-      description: 'Essential English grammar rules for all grades.',
-      type: 'image',
-      url: 'https://placehold.co/600x400/FF0000/FFFFFF?text=Grammar%20Chart',
-      title: 'English Grammar Chart',
-    },
-    {
-      id: 'res_004',
-      subject: 'History',
-      topic: 'World War II Overview',
-      classes: ['Class 9', 'Class 10'],
-      description: 'Concise summary of key events and figures in WWII.',
-      type: 'link',
-      url: 'https://wikipedia.org/wiki/World_War_II',
-      title: 'World War II Wikipedia',
-    },
-    {
-      id: 'res_005',
-      subject: 'Mathematics',
-      topic: 'Geometry Formulas',
-      classes: ['Class 7', 'Class 8', 'Class 9'],
-      description: 'Quick reference for common geometry formulas.',
-      type: 'pdf',
-      url: 'geometry_formulas.pdf',
-      title: 'Geometry Formulas Sheet',
-    },
-  ]);
+  // State for all library resources (from backend)
+  const [allResources, setAllResources] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  // Combined state for filters
+  // Filters and UI state
   const [filters, setFilters] = useState({
     searchQuery: '',
-    subject: 'All', // Default to 'All' for <select>
-    class: 'All Classes', // Default to 'All Classes' for <select>
-    type: 'All',    // Added type filter
+    subject: 'All',
+    class: 'All Classes',
+    type: 'All',
   });
-
-  const [showFilters, setShowFilters] = useState(false); // State to toggle filter dropdown
-  const [showMobileSearch, setShowMobileSearch] = useState(false); // New state for mobile search
-
-  // State for modal visibility and data when editing
+  const [showFilters, setShowFilters] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showAddEditModal, setShowAddEditModal] = useState(false);
-  const [editingResource, setEditingResource] = useState(null); // Null for adding, object for editing
+  const [editingResource, setEditingResource] = useState(null);
+
+  // Fetch resources from backend
+  const fetchResources = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+      setAllResources(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Error loading resources');
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchResources();
+  }, [fetchResources]);
 
   // Options for dropdowns
   const classOptions = useMemo(() => ([
@@ -83,13 +57,11 @@ const LibraryModule = () => {
   ]), []);
 
   const subjectOptions = useMemo(() => {
-    // Collect unique subjects and sort them, then add 'All'
     const subjects = new Set(allResources.map(res => res.subject));
     return ['All', ...Array.from(subjects).sort()];
   }, [allResources]);
 
-  const resourceTypes = ['All', 'pdf', 'image', 'video', 'link']; // Options for Filter by Type
-
+  const resourceTypes = ['All', 'pdf', 'image', 'video', 'link'];
 
   // Handler for filter changes
   const handleFilterChange = useCallback((filterName, value) => {
@@ -104,83 +76,74 @@ const LibraryModule = () => {
     let count = 0;
     if (filters.subject && filters.subject !== 'All') count++;
     if (filters.class && filters.class !== 'All Classes') count++;
-    if (filters.type && filters.type !== 'All') count++; // Count type filter
+    if (filters.type && filters.type !== 'All') count++;
     return count;
   }, [filters]);
-
 
   // Memoized filtered and sorted resources for efficient rendering
   const filteredResources = useMemo(() => {
     let tempResources = [...allResources];
-
-    // Filter by main search query (Title, Subject, Topic, Desc, ID - simplified to include all relevant fields)
     if (filters.searchQuery) {
       const lowerCaseSearchTerm = filters.searchQuery.toLowerCase();
       tempResources = tempResources.filter(res =>
         res.title.toLowerCase().includes(lowerCaseSearchTerm) ||
         res.subject.toLowerCase().includes(lowerCaseSearchTerm) ||
-        res.topic.toLowerCase().includes(lowerCaseSearchTerm) ||
-        res.description.toLowerCase().includes(lowerCaseSearchTerm) ||
-        res.id.toLowerCase().includes(lowerCaseSearchTerm) // Include ID in general search
+        (res.topic || '').toLowerCase().includes(lowerCaseSearchTerm) ||
+        (res.description || '').toLowerCase().includes(lowerCaseSearchTerm) ||
+        (res._id || '').toLowerCase().includes(lowerCaseSearchTerm)
       );
     }
-
-    // Filter by subject
     if (filters.subject !== 'All') {
       tempResources = tempResources.filter(res => res.subject === filters.subject);
     }
-
-    // Filter by class
     if (filters.class !== 'All Classes') {
-      tempResources = tempResources.filter(res => res.classes.includes(filters.class));
+      tempResources = tempResources.filter(res => (res.classes || []).includes(filters.class));
     }
-
-    // Filter by type
     if (filters.type !== 'All') {
       tempResources = tempResources.filter(res => res.type === filters.type);
     }
-
     return tempResources;
   }, [allResources, filters]);
 
-
   // Handler for opening the Add/Edit modal
   const handleAddEditResource = (resource = null) => {
-    setEditingResource(resource); // Pass resource data if editing, null if adding
+    setEditingResource(resource);
     setShowAddEditModal(true);
   };
 
   // Handler for saving a resource (add or update)
-  const handleSaveResource = (resourceData) => {
-    if (editingResource) {
-      // Update existing resource
-      setAllResources(prevResources =>
-        prevResources.map(res => (res.id === editingResource.id ? { ...res, ...resourceData } : res))
-      );
-      console.log("Resource updated:", resourceData);
-    } else {
-      // Add new resource with a unique ID
-      const newResource = {
-        ...resourceData,
-        id: `res_${Date.now()}`, // Simple unique ID
-      };
-      setAllResources(prevResources => [...prevResources, newResource]);
-      console.log("Resource added:", newResource);
+  const handleSaveResource = async (resourceData) => {
+    setLoading(true);
+    setError('');
+    try {
+      if (editingResource && editingResource._id) {
+        // Update existing resource
+        await axios.put(`${API_URL}/${editingResource._id}`, resourceData, { headers: getAuthHeaders() });
+      } else {
+        // Add new resource
+        await axios.post(API_URL, resourceData, { headers: getAuthHeaders() });
+      }
+      await fetchResources();
+      setShowAddEditModal(false);
+      setEditingResource(null);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Error saving resource');
     }
-    setShowAddEditModal(false); // Close modal
-    setEditingResource(null); // Clear editing state
+    setLoading(false);
   };
 
   // Handler for deleting a resource
-  const handleDeleteResource = (resourceId) => {
-    // Replaced window.confirm with a custom modal/dialog in a real app
-    // For this example, we'll keep it as is, but note the instruction to avoid alert/confirm.
-    if (window.confirm("Are you sure you want to delete this resource? This action cannot be undone.")) {
-      setAllResources(prevResources =>
-        prevResources.filter(res => res.id !== resourceId)
-      );
-      console.log("Resource deleted:", resourceId);
+  const handleDeleteResource = async (resourceId) => {
+    if (!window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) return;
+    setLoading(true);
+    setError('');
+    try {
+      await axios.delete(`${API_URL}/${resourceId}`, { headers: getAuthHeaders() });
+      await fetchResources();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Error deleting resource');
     }
+    setLoading(false);
   };
 
   // Handler to clear all filters
@@ -229,7 +192,7 @@ const LibraryModule = () => {
             {/* Mobile Search Button */}
             <button
               className='md:hidden flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-md text-sm'
-              onClick={() => setShowMobileSearch(!showMobileSearch)} // Toggle mobile search visibility
+              onClick={() => setShowMobileSearch(!showMobileSearch)}
             >
               <Search size={16} />
               Search
@@ -253,7 +216,7 @@ const LibraryModule = () => {
             )}
           </button>
           <button
-            onClick={() => handleAddEditResource(null)} // This button now opens the Add Resource modal
+            onClick={() => handleAddEditResource(null)}
             className='inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
           >
             <Plus size={16} className='mr-2' />
@@ -342,9 +305,13 @@ const LibraryModule = () => {
         </div>
       )}
 
+      {/* Loading/Error State */}
+      {loading && <div className="text-center text-blue-600 py-8">Loading resources...</div>}
+      {error && <div className="text-center text-red-500 py-2">{error}</div>}
+
       {/* Resource Cards Display */}
       <div className="min-h-[300px]">
-        {filteredResources.length === 0 ? (
+        {filteredResources.length === 0 && !loading ? (
           <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-6 rounded-lg shadow-md text-center">
             <p className="font-bold text-lg mb-2">No Resources Found!</p>
             <p>Adjust your filters or add new resources to the library.</p>
@@ -353,10 +320,10 @@ const LibraryModule = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredResources.map(resource => (
               <ResourceCard
-                key={resource.id}
+                key={resource._id}
                 resource={resource}
-                onEdit={handleAddEditResource} // Reusing for edit mode
-                onDelete={handleDeleteResource}
+                onEdit={handleAddEditResource}
+                onDelete={() => handleDeleteResource(resource._id)}
               />
             ))}
           </div>
@@ -369,10 +336,9 @@ const LibraryModule = () => {
           initialData={editingResource}
           onClose={() => {
             setShowAddEditModal(false);
-            setEditingResource(null); // Clear editing state on close
+            setEditingResource(null);
           }}
           onSave={handleSaveResource}
-          // Pass class options excluding 'All Classes' and in {value, label} format for the modal
           classOptions={classOptions.filter(option => option !== 'All Classes').map(cls => ({ value: cls, label: cls }))}
         />
       )}

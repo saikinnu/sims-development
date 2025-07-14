@@ -15,80 +15,37 @@ import {
 } from 'lucide-react';
 
 const SubjectModule = () => {
-  // Sample initial data with teachers
-  const initialSubjects = [
-    // {
-    //   id: 1,
-    //   name: 'Mathematics',
-    //   category: 'Science',
-    //   students: 120, // Keeping this in data, but not displayed in table for simplicity in this UI
-    //   teachers: [
-    //     { empId: 'T101', name: 'Dr. Smith' },
-    //     { empId: 'T102', name: 'Prof. Johnson' }
-    //   ]
-    // },
-    // {
-    //   id: 2,
-    //   name: 'Physics',
-    //   category: 'Science',
-    //   students: 85,
-    //   teachers: [
-    //     { empId: 'T103', name: 'Dr. Brown' }
-    //   ]
-    // },
-    // {
-    //   id: 3,
-    //   name: 'Literature',
-    //   category: 'Arts',
-    //   students: 65,
-    //   teachers: [
-    //     { empId: 'T104', name: 'Prof. Davis' },
-    //     { empId: 'T105', name: 'Dr. Wilson' }
-    //   ]
-    // },
-    // {
-    //   id: 4,
-    //   name: 'History',
-    //   category: 'Humanities',
-    //   students: 90,
-    //   teachers: [
-    //     { empId: 'T106', name: 'Prof. Miller' }
-    //   ]
-    // },
-    // {
-    //   id: 5,
-    //   name: 'Computer Science',
-    //   category: 'Technology',
-    //   students: 110,
-    //   teachers: [
-    //     { empId: 'T107', name: 'Dr. Taylor' },
-    //     { empId: 'T108', name: 'Prof. Anderson' }
-    //   ]
-    // },
-  ];
-
-  const [subjects, setSubjects] = useState(() => {
-    const storedSubjects = localStorage.getItem('subjects');
-    return storedSubjects ? JSON.parse(storedSubjects) : initialSubjects;
-  });
+  // Remove initialSubjects and localStorage logic
+  const [subjects, setSubjects] = useState([]);
   const [filteredSubjects, setFilteredSubjects] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [newSubject, setNewSubject] = useState({
     name: '',
     category: '',
-    students: '', // Default to empty string for number input
-    teachers: [{ empId: '', name: '' }] // Initialize with one empty teacher
+    students: '',
+    teachers: [{ empId: '', name: '' }]
   });
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [alert, setAlert] = useState({ message: '', type: '' }); // type: 'success' or 'error'
+  const [alert, setAlert] = useState({ message: '', type: '' });
 
-  // Update localStorage whenever subjects change
-  // useEffect(() => {
-  //   localStorage.setItem('subjects', JSON.stringify(subjects));
-  // }, [subjects]);
-
+  // Fetch subjects from backend on mount
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      try {
+        const token = JSON.parse(localStorage.getItem('authToken'));
+        if (!token) throw new Error('No authentication token found');
+        const response = await axios.get('http://localhost:5000/api/subjects', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setSubjects(response.data);
+      } catch (error) {
+        setAlert({ message: 'Failed to fetch subjects: ' + (error.response?.data?.message || error.message), type: 'error' });
+      }
+    };
+    fetchSubjects();
+  }, []);
 
   // Get unique categories for filter dropdown
   // const categories = ['All', ...new Set(subjects.map(subject => subject.category))];
@@ -161,20 +118,17 @@ const SubjectModule = () => {
       setAlert({ message: 'Subject Name and Category are required.', type: 'error' });
       return;
     }
-
     const validTeachers = newSubject.teachers.filter(t => t.empId && t.name);
     if (validTeachers.length === 0) {
       setAlert({ message: 'At least one teacher (with Employee ID and Name) is required for the subject.', type: 'error' });
       return;
     }
-
     const subjectToAdd = {
       name: newSubject.name,
       category: newSubject.category,
       students: parseInt(newSubject.students) || 0,
       teachers: validTeachers
     };
-
     try {
       const token = JSON.parse(localStorage.getItem('authToken'));
       if (!token) {
@@ -193,32 +147,36 @@ const SubjectModule = () => {
     }
   };
 
-  // Delete subject
-  const handleDeleteSubject = (id) => {
-    if (window.confirm('Are you sure you want to delete this subject?')) {
-      setSubjects(subjects.filter(subject => subject.id !== id));
+  // Delete subject (now calls backend)
+  const handleDeleteSubject = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this subject?')) return;
+    try {
+      const token = JSON.parse(localStorage.getItem('authToken'));
+      if (!token) throw new Error('No authentication token found');
+      await axios.delete(`http://localhost:5000/api/subjects/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSubjects(subjects.filter(subject => subject._id !== id));
       setAlert({ message: 'Subject deleted successfully!', type: 'success' });
+    } catch (error) {
+      setAlert({ message: 'Failed to delete subject: ' + (error.response?.data?.message || error.message), type: 'error' });
     }
   };
 
-  // Edit subject
+  // Edit subject (use _id)
   const handleEditSubject = (subject) => {
-    console.log('subject id ',subject.id);
-    setEditingId(subject.id);
+    setEditingId(subject._id);
     setNewSubject({
       name: subject.name,
       category: subject.category,
-      // students: subject.students.toString(),
-      teachers: subject.teachers.length > 0 ? subject.teachers : [{ empId: '', name: '' }] // Ensure at least one field for editing
+      teachers: subject.teachers.length > 0 ? subject.teachers : [{ empId: '', name: '' }]
     });
     setShowAddForm(true);
-    setAlert({ message: '', type: '' }); // Clear any previous alerts
+    setAlert({ message: '', type: '' });
   };
 
-  // Update subject
+  // Update subject (use _id)
   const handleUpdateSubject = async () => {
-    console.log('update function working fine');
-    console.log(editingId);
     if (!editingId) {
       setAlert({ message: "No subject selected for update.", type: "error" });
       return;
@@ -227,20 +185,17 @@ const SubjectModule = () => {
       setAlert({ message: 'Subject Name and Category are required.', type: 'error' });
       return;
     }
-
     const validTeachers = newSubject.teachers.filter(t => t.empId && t.name);
     if (validTeachers.length === 0) {
       setAlert({ message: 'At least one teacher (with Employee ID and Name) is required for the subject.', type: 'error' });
       return;
     }
-
     const updatedSubject = {
       name: newSubject.name,
       category: newSubject.category,
       students: parseInt(newSubject.students) || 0,
       teachers: validTeachers
     };
-
     try {
       const token = JSON.parse(localStorage.getItem('authToken'));
       if (!token) {
@@ -252,7 +207,7 @@ const SubjectModule = () => {
         }
       });
       setSubjects(subjects.map(subject =>
-        subject.id === editingId ? response.data : subject
+        subject._id === editingId ? response.data : subject
       ));
       setAlert({ message: 'Subject updated successfully!', type: 'success' });
       resetForm();
@@ -468,7 +423,7 @@ const SubjectModule = () => {
           <tbody className="bg-white divide-y divide-gray-100">
             {filteredSubjects.length > 0 ? (
               filteredSubjects.map(subject => (
-                <tr key={subject.id} className="transition-colors duration-200 hover:bg-indigo-50">
+                <tr key={subject._id} className="transition-colors duration-200 hover:bg-indigo-50">
                   <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
                     {subject.name}
                   </td>
@@ -502,7 +457,7 @@ const SubjectModule = () => {
                         <Pencil size={20} />
                       </button>
                       <button
-                        onClick={() => handleDeleteSubject(subject.id)}
+                        onClick={() => handleDeleteSubject(subject._id)}
                         className="p-2.5 rounded-full text-red-600 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                         title="Delete Subject"
                       >

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FiPlus, FiTrash2, FiX } from 'react-icons/fi';
 import { format } from 'date-fns';
 import Select from 'react-select'; // For better dropdowns
+import axios from 'axios';
 
 // Component for adding/editing Homework Diary entry
 export const CreateEditHomeworkModal = ({ initialData, onClose, onSave, subjectOptions }) => {

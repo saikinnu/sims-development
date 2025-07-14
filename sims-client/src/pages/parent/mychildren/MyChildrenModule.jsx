@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   User, GraduationCap, Grid, ChevronRight,
-  BookOpen, Calendar, Hash, Award, Building, Mail, Phone, XCircle, ListOrdered // Import ListOrdered for roll number
+  BookOpen, Calendar, Hash, Award, Building, Mail, Phone, XCircle, ListOrdered, Loader2
 } from 'lucide-react';
 
 
@@ -11,46 +11,80 @@ const MyChildrenModule = () => {
   const navigate = useNavigate();
 
   const [childrenData, setChildrenData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // NEW STATES FOR MODAL
   const [showModal, setShowModal] = useState(false);
   const [selectedChild, setSelectedChild] = useState(null);
 
   useEffect(() => {
-    // Directly setting sample data as loading state is removed
-    const sampleData = [
-      {
-        id: 'S001',
-        name: 'Alex Johnson',
-        profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&h=200&q=80',
-        class: 'Grade 10',
-        section: 'A',
-        admissionNo: 'ADM001',
-        rollNo: 'A1001', // Added Roll Number
-        dateOfBirth: '2014-03-15',
-        parentId: 'PNT001', // Changed from parentEmail to parentId
-        parentPhone: '+919876543210',
-        teacher: 'Mr. David Lee',
-        address: '123, Pine Street, Bengaluru, Karnataka, 560001'
-      },
-      {
-        id: 'S002',
-        name: 'Emily Johnson',
-        profileImage: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&h=200&q=80',
-        class: 'Grade 8',
-        section: 'B',
-        admissionNo: 'ADM002',
-        rollNo: 'B8002', // Added Roll Number
-        dateOfBirth: '2016-09-01',
-        parentId: 'PNT002', // Changed from parentEmail to parentId
-        parentPhone: '+919876543210',
-        teacher: 'Ms. Emily White',
-        address: '456, Oak Avenue, Bengaluru, Karnataka, 560002'
-      },
-    ];
-    setChildrenData(sampleData);
+    fetchChildrenData();
   }, []);
 
+  // Helper to get auth headers
+  const getAuthHeaders = () => {
+    const token = JSON.parse(localStorage.getItem('authToken'));
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  const fetchChildrenData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Get token from localStorage
+      const token = JSON.parse(localStorage.getItem('authToken'));
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+
+      const response = await fetch('http://localhost:5000/api/parents/me', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please log in again.');
+        } else if (response.status === 403) {
+          throw new Error('Access denied. You do not have permission to view this data.');
+        } else if (response.status === 404) {
+          throw new Error('Parent profile not found.');
+        } else {
+          throw new Error(`Server error: ${response.status}`);
+        }
+      }
+
+      const data = await response.json();
+      
+      // Transform the backend data to match our frontend structure
+      const transformedChildren = data.linkedStudents.map(student => ({
+        id: student._id,
+        name: student.full_name,
+        profileImage: student.profile_image?.url || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&h=200&q=80',
+        class: student.class_id?.class_name || 'N/A',
+        section: student.class_id?.grade || 'N/A',
+        admissionNo: student.admission_number,
+        rollNo: student.admission_number, // Using admission number as roll number for now
+        dateOfBirth: student.date_of_birth ? new Date(student.date_of_birth).toISOString().split('T')[0] : 'N/A',
+        parentId: data.parent._id,
+        parentPhone: data.parent.phone,
+        teacher: student.class_id?.supervisor || 'N/A',
+        address: student.address || 'N/A'
+      }));
+
+      setChildrenData(transformedChildren);
+    } catch (err) {
+      console.error('Error fetching children data:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // MODIFIED handleViewDetails to open modal
   const handleViewDetails = (child) => {
@@ -63,6 +97,78 @@ const MyChildrenModule = () => {
     setShowModal(false);
     setSelectedChild(null); // Clear selected child data when closing
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
+        <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
+          <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
+            <User size={32} className="text-blue-600" />
+            My Children
+          </h1>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="flex items-center gap-3 text-gray-600">
+            <Loader2 size={24} className="animate-spin" />
+            <span className="text-lg">Loading children data...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
+        <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
+          <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
+            <User size={32} className="text-blue-600" />
+            My Children
+          </h1>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-red-600 mb-4">
+              <XCircle size={48} className="mx-auto" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Data</h3>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button
+              onClick={fetchChildrenData}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (childrenData.length === 0) {
+    return (
+      <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
+        <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
+          <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
+            <User size={32} className="text-blue-600" />
+            My Children
+          </h1>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-gray-400 mb-4">
+              <User size={48} className="mx-auto" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Children Found</h3>
+            <p className="text-gray-600">No children are currently linked to your account.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">

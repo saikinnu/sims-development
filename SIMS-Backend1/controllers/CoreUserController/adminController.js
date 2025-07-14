@@ -1,6 +1,10 @@
 const Admin = require("../../models/CoreUser/Admin");
 const User = require('../../models/CoreUser/User');
 const bcrypt = require("bcryptjs");
+const Student = require("../../models/CoreUser/Student");
+const Teacher = require("../../models/CoreUser/Teacher");
+const Parent = require("../../models/CoreUser/Parent");
+const AdminStaff = require("../../models/CoreUser/AdminStaff");
 
 // 📌 SuperAdmin creates Admin
 exports.createAdmin = async (req, res) => {
@@ -11,7 +15,7 @@ exports.createAdmin = async (req, res) => {
     //   return res.status(400).json({ message: "Passwords do not match" });
     // }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Password will be automatically hashed by the User model middleware
 
     // Set renewal date
     const now = new Date();
@@ -26,7 +30,7 @@ exports.createAdmin = async (req, res) => {
       school_name,
       email,
       user_id,
-      password: hashedPassword,
+      password, // Will be hashed by User model middleware
       plan_type,
       renewal_date,
       status: "Active",
@@ -35,7 +39,7 @@ exports.createAdmin = async (req, res) => {
     const newUser = await User.create({
       user_id,
       email,
-      password: hashedPassword,
+      password, // Will be hashed by User model middleware
       role: 'admin',
     });
 
@@ -79,5 +83,30 @@ exports.updateAdmin = async (req, res) => {
     res.json(admin);
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+};
+
+// Get user counts for dashboard
+exports.getUserCounts = async (req, res) => {
+  try {
+    const studentCount = await Student.countDocuments();
+    const teacherCount = await Teacher.countDocuments();
+    const parentCount = await Parent.countDocuments();
+    const staffCount = await AdminStaff.countDocuments();
+    res.json({ studentCount, teacherCount, parentCount, staffCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get total students, teachers, and parents only
+exports.getStudentTeacherParentCounts = async (req, res) => {
+  try {
+    const studentCount = await Student.countDocuments();
+    const teacherCount = await Teacher.countDocuments();
+    const parentCount = await Parent.countDocuments();
+    res.json({ studentCount, teacherCount, parentCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };

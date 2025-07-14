@@ -31,6 +31,21 @@ router.get(
 
 router.get('/monthly-report', protect, checkRole('teacher', 'admin', 'parent'), attendanceController.getMonthlyReport);
 
+// BULK: Get all students' attendance for a specific date
+router.get(
+  '/bulk/date',
+  protect,
+  checkRole('teacher', 'admin'),
+  attendanceController.getAttendanceByDate
+);
+
+// BULK: Set/update attendance for all students for a specific date
+router.post(
+  '/bulk',
+  protect,
+  checkRole('teacher', 'admin'),
+  attendanceController.setBulkAttendance
+);
 
 // ✅ PUT: Update attendance
 router.put(

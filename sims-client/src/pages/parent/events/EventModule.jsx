@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Filter, X, Search, CalendarIcon } from 'lucide-react';
 import Select from 'react-select';
+import axios from 'axios';
 import EventDetails from './EventDetails';
 
 // Helper function to format date to DD-MM-YYYY
@@ -47,59 +48,32 @@ function EventsModule() {
   const [showFilters, setShowFilters] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
 
-  // Dummy data for events, with dynamic status calculation
+  // Fetch events from backend API
   useEffect(() => {
-    const rawEvents = [
-      {
-        id: 'evt003',
-        title: 'Parent-Teacher Meeting',
-        description: 'Discussion regarding student progress.',
-        eventType: ['Meeting'],
-        startDate: '2025-08-01',
-        endDate: null,
-        eventName: 'Parent-Teacher Meeting',
-        targetAudience: 'Parents, Teachers',
-      },
-      {
-        id: 'evt004',
-        title: 'Annual Cultural Fest',
-        description: 'A celebration of diverse cultures with performances and exhibitions.',
-        eventType: ['Cultural'],
-        startDate: '2025-06-20',
-        endDate: '2025-06-22',
-        eventName: 'Harmony Fest',
-        targetAudience: 'All',
-      },
-      {
-        id: 'evt005',
-        title: 'Graduation Ceremony',
-        description: 'Celebrating the achievements of the graduating class.',
-        eventType: ['Academic'],
-        startDate: '2024-11-10',
-        endDate: '2024-11-10',
-        eventName: 'Graduation Day',
-        targetAudience: 'Students, Parents, Staff',
-      },
-      {
-        id: 'evt006',
-        title: 'School Board Meeting',
-        description: 'Quarterly meeting of the school board members.',
-        eventType: ['Meeting'],
-        status: 'cancelled',
-        startDate: '2025-09-05',
-        endDate: '2025-09-05',
-        eventName: 'Board Meeting Q3',
-        targetAudience: 'Staff',
+    const fetchEvents = async () => {
+      try {
+        const token = JSON.parse(localStorage.getItem('authToken'));
+        const response = await axios.get('http://localhost:5000/api/events/', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        // Map backend events to frontend format if needed
+        const eventsWithStatus = (response.data || []).map(event => ({
+          ...event,
+          // If status is not set or is null, calculate it from dates
+          status: event.status === 'cancelled' ? 'cancelled' : getEventStatus(event.startDate, event.endDate),
+          // Ensure eventType is always an array
+          eventType: Array.isArray(event.eventType) ? event.eventType : (event.eventType ? [event.eventType] : []),
+          // Ensure targetAudience is always a string for display (join if array)
+          targetAudience: Array.isArray(event.targetAudience) ? event.targetAudience.join(', ') : (event.targetAudience || ''),
+        }));
+        setEvents(eventsWithStatus);
+      } catch (error) {
+        setEvents([]);
+        // Optionally, show error to user
+        // console.error('Failed to fetch events:', error);
       }
-    ];
-
-    // Map through events to set their dynamic status based on dates
-    const eventsWithDynamicStatus = rawEvents.map(event => ({
-      ...event,
-      status: event.status === 'cancelled' ? 'cancelled' : getEventStatus(event.startDate, event.endDate)
-    }));
-
-    setEvents(eventsWithDynamicStatus);
+    };
+    fetchEvents();
   }, []);
 
   const statusOptions = [
@@ -159,7 +133,6 @@ function EventsModule() {
         <CalendarIcon size={32} className="text-indigo-600" />
         Events List
       </h1>
-      
       {/* Header with Search and Filter Buttons */}
       <div className='flex justify-between mb-4'>
         {/* Desktop Search Bar */}
@@ -307,7 +280,7 @@ function EventsModule() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredEvents.length > 0 ? (
                 filteredEvents.map((event) => (
-                  <tr key={event.id} className="hover:bg-gray-50">
+                  <tr key={event._id || event.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {event.title}
                     </td>
@@ -316,7 +289,7 @@ function EventsModule() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {event.eventType.map((t, index) => (
-                        <span key={`${event.id}-${t}-${index}`} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
+                        <span key={`${event._id || event.id}-${t}-${index}`} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
                           {t}
                         </span>
                       ))}
@@ -334,11 +307,11 @@ function EventsModule() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {event.endDate && (event.startDate !== event.endDate) ? (
                         <>
-                          <div>Start: <span className='font-medium'>{formatDate(event.startDate)}</span></div>
-                          <div>End: <span className='font-medium'>{formatDate(event.endDate)}</span></div>
+                          <div>Start: <span className='font-medium'>{formatDate(event.startDate?.slice(0, 10))}</span></div>
+                          <div>End: <span className='font-medium'>{formatDate(event.endDate?.slice(0, 10))}</span></div>
                         </>
                       ) : (
-                        <span className='font-medium'>{formatDate(event.startDate)}</span>
+                        <span className='font-medium'>{formatDate(event.startDate?.slice(0, 10))}</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

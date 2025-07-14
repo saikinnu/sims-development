@@ -7,7 +7,7 @@ const { protect, checkRole } = require('../../middlewares/authMiddleware');
 router.post(
   '/',
   protect,
-  checkRole('admin', 'superadmin'),
+  checkRole('admin', 'superadmin','teacher'),
   classController.createClass
 );
 
@@ -31,7 +31,7 @@ router.get(
 router.put(
   '/:id',
   protect,
-  checkRole('admin', 'superadmin'),
+  checkRole('admin', 'superadmin','teacher'),
   classController.updateClass
 );
 
@@ -39,7 +39,7 @@ router.put(
 router.delete(
   '/:id',
   protect,
-  checkRole('admin', 'superadmin'),
+  checkRole('admin', 'superadmin','teacher'),
   classController.deleteClass
 );
 

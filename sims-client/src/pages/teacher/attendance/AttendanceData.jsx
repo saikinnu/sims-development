@@ -1,7 +1,37 @@
-// TEMPORARY DATA
+// AttendanceData.jsx
+import { teacherAPI } from '../../../services/api';
 
+/**
+ * Fetches all teachers from the backend
+ * @returns {Promise<Array>} Promise that resolves to array of teachers
+ */
+export const fetchTeachers = async () => {
+  try {
+    const response = await teacherAPI.getAllTeachers();
+    return response.data || [];
+  } catch (error) {
+    console.error('Error fetching teachers:', error);
+    return [];
+  }
+};
 
+/**
+ * Fetches a specific teacher by ID
+ * @param {string} teacherId - The teacher ID
+ * @returns {Promise<Object>} Promise that resolves to teacher object
+ */
+export const fetchTeacherById = async (teacherId) => {
+  try {
+    const response = await teacherAPI.getTeacherById(teacherId);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching teacher by ID:', error);
+    return null;
+  }
+};
 
+// Export empty array as default for backward compatibility
+export const teachersData = [];
 
 export const studentsData = [
   {

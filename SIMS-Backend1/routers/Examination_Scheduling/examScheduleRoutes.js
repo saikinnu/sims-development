@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const ctrl = require('../../controllers/Examination_Scheduling/examScheduleController');
+const {createSchedule,getAllSchedules ,getScheduleById ,updateSchedule ,deleteSchedule } = require('../../controllers/Examination_Scheduling/examScheduleController');
 const { protect, checkRole } = require('../../middlewares/authMiddleware');
 
-router.post('/', protect, checkRole('admin', 'superadmin'), ctrl.createSchedule);
-router.get('/:classId', protect, checkRole('admin', 'teacher', 'student', 'parent'), ctrl.getClassSchedule);
+router.post('/', protect, checkRole('admin', 'superadmin'), createSchedule);
+router.get('/', protect, checkRole('admin', 'teacher', 'student', 'parent'), getAllSchedules);
+router.get('/:id',protect,checkRole('admin','superadmin','student', 'parent'),getScheduleById);
+router.put('/:id',protect,checkRole('admin','superadmin'),updateSchedule);
+router.delete('/:id',protect,checkRole('admin','superadmin'),deleteSchedule);
 
 module.exports = router;

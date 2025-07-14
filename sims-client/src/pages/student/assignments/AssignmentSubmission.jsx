@@ -5,6 +5,7 @@ import imageCompression from 'browser-image-compression';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
 
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILES = 10;

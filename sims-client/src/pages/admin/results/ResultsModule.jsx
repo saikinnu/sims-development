@@ -1,34 +1,88 @@
 // src/pages/admin/results/ResultsModule.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
 import {
   Search, ChevronDown, ChevronUp, User, Book, Hash, Percent, Award,
   Filter, X, Star, Trophy, TrendingUp, AlertCircle, Download
 } from 'lucide-react';
-import {
-  students as initialStudentsData,
-  subjectsConfig,
-  getStudentGradeCategory,
-  allClasses,
-  allSections
-} from './ReportsData';
+// import {
+//   students as initialStudentsData,
+//   subjectsConfig,
+//   getStudentGradeCategory,
+//   allClasses,
+//   allSections
+// } from './ReportsData';
 
 const ResultsModule = () => {
+  const [studentsData, setStudentsData] = useState([]);
+  const [subjectsConfig, setSubjectsConfig] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClass, setFilterClass] = useState('');
   const [filterSection, setFilterSection] = useState('');
-  const [filterGradeCategory, setFilterGradeCategory] = useState(''); // New state for grade filter
+  const [filterGradeCategory, setFilterGradeCategory] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [activeFilters, setActiveFilters] = useState([]);
+  const [allClasses, setAllClasses] = useState([]);
+  const [allSections, setAllSections] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch students and subjects config from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [studentsRes, subjectsRes] = await Promise.all([
+          axios.get('http://localhost:5000/api/exam-reports/results'),
+          axios.get('http://localhost:5000/api/exam-reports/subjects-config')
+        ]);
+        const students = studentsRes.data;
+        const subjects = subjectsRes.data;
+        setStudentsData(Array.isArray(students) ? students : []);
+        setSubjectsConfig(subjects);
+        // Derive allClasses and allSections from students
+        const classes = Array.from(new Set(students.map(s => s.class))).filter(Boolean);
+        const sections = Array.from(new Set(students.map(s => s.section))).filter(Boolean);
+        setAllClasses(classes);
+        setAllSections(sections);
+      } catch (err) {
+        if (axios.isAxiosError && axios.isAxiosError(err)) {
+          if (err.response && err.response.data && err.response.data.error) {
+            setError(err.response.data.error);
+          } else if (err.response && err.response.data && err.response.data.message) {
+            setError(err.response.data.message);
+          } else {
+            setError(err.message || 'Error fetching data');
+          }
+        } else {
+          setError(err.message || 'Error fetching data');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   // Define grade categories for the filter dropdown
   const gradeCategories = ['Excellent', 'Good', 'Average', 'Poor'];
 
   const studentsWithCalculatedResults = useMemo(() => {
-    return initialStudentsData.map(student => {
+    // Backend already provides calculated fields, but fallback if not present
+    return studentsData.map(student => {
+      if (
+        student.totalMarksObtained !== undefined &&
+        student.totalMaxMarks !== undefined &&
+        student.overallPercentage !== undefined &&
+        student.gradeCategory !== undefined
+      ) {
+        return student;
+      }
+      // Fallback calculation (shouldn't be needed)
       let totalMarksObtained = 0;
       let totalMaxMarks = 0;
       let subjectsAttempted = 0;
-
       Object.entries(student.marks).forEach(([subject, marks]) => {
         const subjectConf = subjectsConfig[subject];
         if (subjectConf) {
@@ -37,12 +91,13 @@ const ResultsModule = () => {
           subjectsAttempted++;
         }
       });
-
       const overallPercentage = subjectsAttempted > 0
         ? (totalMarksObtained / totalMaxMarks) * 100
         : 0;
-      const gradeCategory = getStudentGradeCategory(overallPercentage);
-
+      let gradeCategory = 'Poor';
+      if (overallPercentage >= 85) gradeCategory = 'Excellent';
+      else if (overallPercentage >= 70) gradeCategory = 'Good';
+      else if (overallPercentage >= 50) gradeCategory = 'Average';
       return {
         ...student,
         totalMarksObtained,
@@ -51,7 +106,7 @@ const ResultsModule = () => {
         gradeCategory
       };
     });
-  }, [initialStudentsData, subjectsConfig]);
+  }, [studentsData, subjectsConfig]);
 
   const filteredStudents = useMemo(() => {
     let filtered = studentsWithCalculatedResults;
@@ -72,7 +127,6 @@ const ResultsModule = () => {
       filtered = filtered.filter(student => student.section === filterSection);
     }
 
-    // Apply grade category filter
     if (filterGradeCategory) {
       filtered = filtered.filter(student => student.gradeCategory === filterGradeCategory);
     }
@@ -81,11 +135,11 @@ const ResultsModule = () => {
     if (searchTerm) filters.push(`Search: "${searchTerm}"`);
     if (filterClass) filters.push(`Class: ${filterClass}`);
     if (filterSection) filters.push(`Section: ${filterSection}`);
-    if (filterGradeCategory) filters.push(`Grade: ${filterGradeCategory}`); // Add to active filters
+    if (filterGradeCategory) filters.push(`Grade: ${filterGradeCategory}`);
     setActiveFilters(filters);
 
     return filtered;
-  }, [studentsWithCalculatedResults, searchTerm, filterClass, filterSection, filterGradeCategory]); // Add filterGradeCategory to dependencies
+  }, [studentsWithCalculatedResults, searchTerm, filterClass, filterSection, filterGradeCategory]);
 
   const sortedStudents = useMemo(() => {
     if (!sortConfig.key) return filteredStudents;
@@ -95,12 +149,14 @@ const ResultsModule = () => {
       let aValue = a[sortConfig.key];
       let bValue = b[sortConfig.key];
 
-      if (['overallPercentage', 'rollNo', 'totalMarksObtained'].includes(sortConfig.key)) {
+      if ([
+        'overallPercentage', 'rollNo', 'totalMarksObtained'
+      ].includes(sortConfig.key)) {
         aValue = parseFloat(aValue);
         bValue = parseFloat(bValue);
       } else if (sortConfig.key === 'class') {
-        const classNumA = parseInt(aValue.replace('Grade ', ''));
-        const classNumB = parseInt(bValue.replace('Grade ', ''));
+        const classNumA = parseInt((aValue || '').replace('Grade ', ''));
+        const classNumB = parseInt((bValue || '').replace('Grade ', ''));
         if (classNumA < classNumB) return sortConfig.direction === 'asc' ? -1 : 1;
         if (classNumA > classNumB) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -170,7 +226,7 @@ const ResultsModule = () => {
     setSearchTerm('');
     setFilterClass('');
     setFilterSection('');
-    setFilterGradeCategory(''); // Reset new grade filter
+    setFilterGradeCategory('');
   };
 
   const handleDownloadReport = () => {
@@ -192,8 +248,8 @@ const ResultsModule = () => {
         student.marks[subject] !== undefined ? student.marks[subject] : 'N/A'
       );
       return [
-        `"${student.id}"`, // Enclose ID in quotes to prevent issues with leading zeros or large numbers
-        `"${student.name.replace(/"/g, '""')}"`, // Handle commas/quotes in names
+        `"${student.id}"`,
+        `"${student.name.replace(/"/g, '""')}"`,
         `"${student.class}"`,
         `"${student.section}"`,
         student.rollNo,
@@ -202,31 +258,33 @@ const ResultsModule = () => {
         student.totalMaxMarks,
         `${student.overallPercentage}%`,
         `"${student.gradeCategory}"`
-      ].join(','); // Join cells with a comma
+      ].join(',');
     });
 
     // Combine headers and rows
     const csvContent = [
-      headers.join(','), // Join headers with a comma
+      headers.join(','),
       ...rows
-    ].join('\n'); // Join rows with a newline character
+    ].join('\n');
 
     // Create a Blob from the CSV content
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-
-    // Create a temporary URL for the Blob
     const url = URL.createObjectURL(blob);
-
-    // Create a temporary anchor element and trigger the download
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'student_report.csv'); // Set the filename
-    document.body.appendChild(link); // Append to body to make it clickable
-    link.click(); // Programmatically click the link
-    document.body.removeChild(link); // Clean up the temporary element
-    URL.revokeObjectURL(url); // Revoke the object URL to free up memory
+    link.setAttribute('download', 'student_report.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
+  if (loading) {
+    return <div className="p-8 text-center text-lg text-gray-500 dark:text-gray-300">Loading results...</div>;
+  }
+  if (error) {
+    return <div className="p-8 text-center text-lg text-red-500 dark:text-red-300">{error}</div>;
+  }
 
   return (
     <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
@@ -531,7 +589,7 @@ const ResultsModule = () => {
           <div className="bg-gray-50 dark:bg-gray-700/30 px-3 py-2 border-t border-gray-200 dark:border-gray-700">
             <div className="flex flex-wrap justify-between items-center gap-2">
               <div className="text-xs text-gray-600 dark:text-gray-300">
-                Showing <span className="font-medium">{sortedStudents.length}</span> of <span className="font-medium">{initialStudentsData.length}</span> students
+                Showing <span className="font-medium">{sortedStudents.length}</span> of <span className="font-medium">{studentsData.length}</span> students
               </div>
               <div className="flex flex-wrap gap-2">
                 <div className="flex items-center text-xs">

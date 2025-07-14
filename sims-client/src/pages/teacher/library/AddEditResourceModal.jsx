@@ -2,6 +2,9 @@ import React, { useState, useRef, useCallback, useEffect } from 'react'; // Adde
 import { UploadCloud, X, FileText, Image, Video, Link } from 'lucide-react';
 import Select from 'react-select';
 
+const CLOUDINARY_UPLOAD_PRESET = 'sims_development';
+const CLOUDINARY_CLOUD_NAME = 'duxyycuty';
+
 const AddEditResourceModal = ({ initialData, onClose, onSave }) => { // Removed classOptions prop
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
@@ -16,12 +19,13 @@ const AddEditResourceModal = ({ initialData, onClose, onSave }) => { // Removed 
   // State for uploaded files, initialized based on initialData
   const [uploadedFiles, setUploadedFiles] = useState(() => {
     if (initialData && initialData.url && initialData.type !== 'link') {
-      // Simulate a File object for pre-existing uploaded files
-      // In a real app, you might fetch actual file metadata or just display the name.
-      return [{ name: initialData.url, size: 0, type: 'application/octet-stream' }]; // dummy size and type
+      return [{ name: initialData.url, size: 0, type: 'application/octet-stream' }];
     }
     return [];
   });
+
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   const fileInputRef = useRef(null);
 
@@ -78,26 +82,64 @@ const AddEditResourceModal = ({ initialData, onClose, onSave }) => { // Removed 
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (event) => {
+  // Cloudinary upload function
+  const uploadToCloudinary = async (file, resourceType = 'image') => {
+    const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await response.json();
+    if (!data.secure_url) throw new Error(data.error?.message || 'Upload failed');
+    return data.secure_url;
+  };
+
+  const handleFileChange = async (event) => {
     const files = Array.from(event.target.files);
     if (files.length > 0) {
-      // For simplicity, we'll just take the first file for URL field if not a link
-      setUploadedFiles(files);
-      if (formData.type !== 'link') {
-        setFormData(prev => ({ ...prev, url: files[0].name })); // Use file name as simulated URL
+      const file = files[0]; // Only allow one file per resource
+      let resourceType = 'image';
+      if (formData.type === 'pdf') resourceType = 'raw';
+      if (formData.type === 'video') resourceType = 'video';
+      setUploading(true);
+      setUploadError('');
+      try {
+        const url = await uploadToCloudinary(file, resourceType);
+        setUploadedFiles([file]);
+        setFormData(prev => ({ ...prev, url }));
+      } catch (err) {
+        setUploadError(err.message);
+        setUploadedFiles([]);
+        setFormData(prev => ({ ...prev, url: '' }));
       }
+      setUploading(false);
     }
   };
 
-  const handleDrop = useCallback((event) => {
+  const handleDrop = useCallback(async (event) => {
     event.preventDefault();
     event.stopPropagation();
     const files = Array.from(event.dataTransfer.files);
     if (files.length > 0) {
-      setUploadedFiles(files);
-      if (formData.type !== 'link') {
-        setFormData(prev => ({ ...prev, url: files[0].name }));
+      const file = files[0];
+      let resourceType = 'image';
+      if (formData.type === 'pdf') resourceType = 'raw';
+      if (formData.type === 'video') resourceType = 'video';
+      setUploading(true);
+      setUploadError('');
+      try {
+        const url = await uploadToCloudinary(file, resourceType);
+        setUploadedFiles([file]);
+        setFormData(prev => ({ ...prev, url }));
+      } catch (err) {
+        setUploadError(err.message);
+        setUploadedFiles([]);
+        setFormData(prev => ({ ...prev, url: '' }));
       }
+      setUploading(false);
     }
   }, [formData.type]);
 
@@ -107,23 +149,17 @@ const AddEditResourceModal = ({ initialData, onClose, onSave }) => { // Removed 
   }, []);
 
   const handleRemoveFile = (fileName) => {
-    setUploadedFiles(prev => prev.filter(file => file.name !== fileName));
-    // Clear URL if the removed file was the one populating it
-    if (formData.url === fileName) {
-      setFormData(prev => ({ ...prev, url: '' }));
-    }
+    setUploadedFiles([]);
+    setFormData(prev => ({ ...prev, url: '' }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const resourceToSave = { ...formData };
-    if (formData.type !== 'link' && uploadedFiles.length > 0) {
-      resourceToSave.url = uploadedFiles[0].name;
-    } else if (formData.type !== 'link' && uploadedFiles.length === 0) {
-        // If type is file-based but no file is selected, clear URL
-        resourceToSave.url = '';
+    if (formData.type !== 'link' && !formData.url) {
+      setUploadError('Please upload a file.');
+      return;
     }
-    onSave(resourceToSave);
+    onSave(formData);
   };
 
   const getFileTypeIcon = (type) => {
@@ -250,60 +286,58 @@ const AddEditResourceModal = ({ initialData, onClose, onSave }) => { // Removed 
                 </div>
               ) : (formData.type && formData.type !== 'link') ? (
                 <div className="col-span-full">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Upload Files</label>
-                  <p className="text-xs text-gray-500 mb-3">Max file size: 10MB | Max files: 10 | Supported formats: PDF, DOCX, JPG, PNG, ZIP</p>
-
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Upload File</label>
+                  <p className="text-xs text-gray-500 mb-3">Max file size: 10MB | Supported formats: PDF, JPG, PNG, MP4</p>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current.click()}
                     className="mb-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg flex items-center shadow-sm transition duration-300 ease-in-out"
+                    disabled={uploading}
                   >
                     <UploadCloud className="mr-2 text-xl" />
-                    Add Files
+                    {uploading ? 'Uploading...' : 'Add File'}
                   </button>
                   <input
                     type="file"
                     ref={fileInputRef}
                     onChange={handleFileChange}
                     className="hidden"
-                    multiple
                     accept={
                       formData.type === 'pdf' ? '.pdf' :
                       formData.type === 'image' ? '.jpg,.jpeg,.png,.gif' :
                       formData.type === 'video' ? '.mp4,.mov,.avi,.mkv' :
                       '*/*'
                     }
+                    disabled={uploading}
                   />
-
                   <div
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
-                    onClick={() => fileInputRef.current.click()}
-                    className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 transition duration-200 ease-in-out"
+                    onClick={() => !uploading && fileInputRef.current.click()}
+                    className={`border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 transition duration-200 ease-in-out ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
                   >
                     <UploadCloud className="mx-auto text-gray-400 mb-3" size={48} />
-                    <p className="text-gray-600 mb-1">Drag and drop files here, or click to browse</p>
-                    <p className="text-sm text-gray-500">Supports multiple files</p>
+                    <p className="text-gray-600 mb-1">Drag and drop a file here, or click to browse</p>
+                    <p className="text-sm text-gray-500">Only one file allowed</p>
                   </div>
-
-                  {uploadedFiles.length > 0 && (
+                  {uploadError && <div className="text-red-500 text-xs mt-2">{uploadError}</div>}
+                  {uploadedFiles.length > 0 && formData.url && (
                     <div className="mt-4 space-y-2">
-                      <p className="text-sm font-medium text-gray-700">Selected Files:</p>
-                      {uploadedFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded-md">
-                          <span className="text-sm text-gray-800 flex items-center">
-                            {getFileTypeIcon(formData.type)}
-                            <span className="ml-2">{file.name}</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFile(file.name)}
-                            className="text-gray-500 hover:text-red-600 ml-2"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ))}
+                      <p className="text-sm font-medium text-gray-700">Uploaded File:</p>
+                      <div className="flex items-center justify-between bg-gray-100 p-2 rounded-md">
+                        <span className="text-sm text-gray-800 flex items-center">
+                          {getFileTypeIcon(formData.type)}
+                          <span className="ml-2">{uploadedFiles[0].name}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(uploadedFiles[0].name)}
+                          className="text-gray-500 hover:text-red-600 ml-2"
+                          disabled={uploading}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -331,6 +365,7 @@ const AddEditResourceModal = ({ initialData, onClose, onSave }) => { // Removed 
             <button
               type="submit"
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+              disabled={uploading}
             >
               {initialData ? 'Update Resource' : 'Add Resource'}
             </button>

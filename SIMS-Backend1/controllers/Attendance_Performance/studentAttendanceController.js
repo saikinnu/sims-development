@@ -1,5 +1,6 @@
 const StudentAttendance = require('../../models/Attendance_PerformanceSchema/StudentAttendance');
 const ExcelJS = require('exceljs');
+const moment = require('moment');
 
 // ✅ Create attendance record
 exports.markAttendance = async (req, res) => {
@@ -139,4 +140,57 @@ exports.exportAttendanceExcel = async (req, res) => {
 
   await workbook.xlsx.write(res);
   res.end();
+};
+
+// BULK: Get all students' attendance for a specific date
+exports.getAttendanceByDate = async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ message: 'Date is required' });
+    const start = moment(date).startOf('day').toDate();
+    const end = moment(date).endOf('day').toDate();
+    const records = await StudentAttendance.find({
+      date: { $gte: start, $lte: end }
+    }).populate('student_id', 'full_name admission_number');
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// BULK: Set/update attendance for all students for a specific date
+exports.setBulkAttendance = async (req, res) => {
+  console.log(req.body);
+  try {
+    const { date, records } = req.body; // records: [{ student_id, status, remarks }]
+    if (!date || !Array.isArray(records)) {
+      return res.status(400).json({ message: 'Date and records array are required' });
+    }
+    const start = moment(date).startOf('day').toDate();
+    const end = moment(date).endOf('day').toDate();
+    const results = [];
+    for (const rec of records) {
+      let attendance = await StudentAttendance.findOne({
+        student_id: rec.student_id,
+        date: { $gte: start, $lte: end }
+      });
+      if (attendance) {
+        attendance.status = rec.status;
+        if (rec.remarks) attendance.remarks = rec.remarks;
+        await attendance.save();
+      } else {
+        attendance = new StudentAttendance({
+          student_id: rec.student_id,
+          date,
+          status: rec.status,
+          remarks: rec.remarks || '',
+        });
+        await attendance.save();
+      }
+      results.push(attendance);
+    }
+    res.json({ updated: results.length, records: results });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };

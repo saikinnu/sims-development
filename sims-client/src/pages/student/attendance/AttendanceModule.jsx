@@ -1,44 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, AlertCircle, Clock, Calendar as CalendarIcon, Ban, CalendarDays } from 'lucide-react';
 import Calendar from './Calendar';
+import axios from 'axios';
+
+const API_BASE = 'http://localhost:5000/api';
 
 const AttendanceModule = () => {
-    // Sample data - updated to include data from January 2025
-    const [allAttendanceData] = useState([
-
-        // April 2025 (provided by user)
-        { date: '2025-04-01', status: 'present', checkIn: '08:00', checkOut: '15:00' },
-        { date: '2025-04-02', status: 'present', checkIn: '08:05', checkOut: '15:10' },
-        { date: '2025-04-03', status: 'half-day', checkIn: '08:30', checkOut: '12:00' },
-        { date: '2025-04-04', status: 'present', checkIn: '08:10', checkOut: '15:15' },
-        { date: '2025-04-05', status: 'absent', checkIn: null, checkOut: null, reason: 'Travel' },
-        { date: '2025-04-08', status: 'late', checkIn: '09:35', checkOut: '15:25' },
-        { date: '2025-04-10', status: 'present', checkIn: '08:15', checkOut: '15:30' },
-        { date: '2025-04-11', status: 'holiday', checkIn: null, checkOut: null, reason: 'Eid-ul-Fitr' },
-
-        // May 2025 (provided by user)
-        { date: '2025-05-01', status: 'holiday', checkIn: null, checkOut: null, reason: 'Labour Day' },
-        { date: '2025-05-02', status: 'present', checkIn: '08:00', checkOut: '15:00' },
-        { date: '2025-05-03', status: 'present', checkIn: '08:05', checkOut: '15:10' },
-        { date: '2025-05-06', status: 'absent', checkIn: null, checkOut: null, reason: 'Sick' },
-        { date: '2025-05-07', status: 'present', checkIn: '08:10', checkOut: '15:15' },
-        { date: '2025-05-08', status: 'late', checkIn: '09:20', checkOut: '15:00' },
-        { date: '2025-05-09', status: 'half-day', checkIn: '08:30', checkOut: '12:00' },
-        { date: '2025-05-13', status: 'present', checkIn: '08:15', checkOut: '15:20' },
-
-        // June 2025 (provided by user, added entry for today)
-        { date: '2025-06-03', status: 'present', checkIn: '08:00', checkOut: '15:00' },
-        { date: '2025-06-04', status: 'present', checkIn: '08:05', checkOut: '15:10' },
-        { date: '2025-06-05', status: 'absent', checkIn: null, checkOut: null, reason: 'Vacation' },
-        { date: '2025-06-06', status: 'present', checkIn: '08:10', checkOut: '15:15' },
-        { date: '2025-06-07', status: 'late', checkIn: '09:25', checkOut: '15:00' }, // Saturday, will not show icon
-        { date: '2025-06-10', status: 'present', checkIn: '08:15', checkOut: '15:20' },
-        { date: '2025-06-17', status: 'holiday', checkIn: null, checkOut: null, reason: 'Bakri Eid' },
-        { date: '2025-06-20', status: 'half-day', checkIn: '08:30', checkOut: '12:00' },
-        { date: '2025-06-21', status: 'present', checkIn: '08:20', checkOut: '15:30' }, // Saturday, will not show icon
-        { date: '2025-06-23', status: 'present', checkIn: '08:00', checkOut: '15:00' }, // Added for current date (Monday)
-
-    ]);
+    // Backend-driven attendance data
+    const [allAttendanceData, setAllAttendanceData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     // Initialize with the current date to show the current month by default
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -52,11 +23,56 @@ const AttendanceModule = () => {
         holidays: 0
     });
 
+    // Helper to get auth headers
+    const getAuthHeaders = () => {
+        const token = JSON.parse(localStorage.getItem('authToken'));
+        return token ? { Authorization: `Bearer ${token}` } : {};
+    };
+
+    // Helper to get student user_id from localStorage
+    const getStudentUserId = () => {
+        return JSON.parse(localStorage.getItem('authUserID'));
+    };
+
+    // Fetch student profile and attendance data
+    useEffect(() => {
+        const fetchAttendance = async () => {
+            setLoading(true);
+            setError('');
+            try {
+                const userId = getStudentUserId();
+                if (!userId) throw new Error('Student user_id not found. Please log in again.');
+                // Step 1: Get student profile to get MongoDB _id
+                const profileRes = await axios.get(`${API_BASE}/students/by-userid/${userId}`, {
+                    headers: getAuthHeaders(),
+                });
+                const student = profileRes.data;
+                if (!student || !student._id) throw new Error('Student profile not found.');
+                // Step 2: Fetch attendance records for this student
+                const attendanceRes = await axios.get(`${API_BASE}/student-attendance/student/${student._id}`, {
+                    headers: getAuthHeaders(),
+                });
+                // Normalize backend data to match frontend expectations
+                const backendData = (attendanceRes.data || []).map(item => ({
+                    date: item.date ? new Date(item.date).toISOString().slice(0, 10) : '',
+                    status: item.status ? item.status.toLowerCase().replace(/ /g, '-') : '',
+                    checkIn: item.checkIn || item.check_in || null,
+                    checkOut: item.checkOut || item.check_out || null,
+                    reason: item.remarks || item.reason || '',
+                }));
+                setAllAttendanceData(backendData);
+            } catch (err) {
+                setError(err.response?.data?.message || err.message || 'Failed to load attendance data.');
+            }
+            setLoading(false);
+        };
+        fetchAttendance();
+    }, []);
+
     // Filter attendance data for the current month
     useEffect(() => {
         const year = currentMonth.getFullYear();
         const month = currentMonth.getMonth(); // 0-indexed month
-
         const filteredData = allAttendanceData.filter(item => {
             const itemDate = new Date(item.date);
             return itemDate.getFullYear() === year && itemDate.getMonth() === month;
@@ -72,7 +88,6 @@ const AttendanceModule = () => {
             const late = monthlyAttendanceData.filter(a => a.status === 'late').length;
             const halfDays = monthlyAttendanceData.filter(a => a.status === 'half-day').length;
             const holidays = monthlyAttendanceData.filter(a => a.status === 'holiday').length;
-
             setStats({
                 present,
                 absent,
@@ -81,7 +96,6 @@ const AttendanceModule = () => {
                 holidays
             });
         };
-
         calculateStats();
     }, [monthlyAttendanceData]);
 
@@ -96,6 +110,27 @@ const AttendanceModule = () => {
             default: return 'bg-gray-100 text-gray-800';
         }
     };
+
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[300px]">
+                <svg className="animate-spin h-8 w-8 text-indigo-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                </svg>
+                <h2 className="text-xl font-bold mb-2">Loading Attendance...</h2>
+            </div>
+        );
+    }
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[300px]">
+                <XCircle size={48} className="text-red-500 mb-4" />
+                <h2 className="text-xl font-bold mb-2">Attendance Data Not Found</h2>
+                <p>{error}</p>
+            </div>
+        );
+    }
 
     return (
     <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">

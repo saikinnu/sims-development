@@ -1,45 +1,50 @@
 // MessageData.jsx
-
-const mockUsers = [
-  // Teachers
-  { id: 'T001', name: 'Mr. Davis', type: 'Teacher' },
-  { id: 'T002', name: 'Ms. Evans', type: 'Teacher' },
-  { id: 'T003', name: 'Dr. Frank', type: 'Teacher' },
-
-];
+import { messageAPI } from '../../../services/api';
 
 /**
- * Simulates fetching users based on a search query (ID or name).
+ * Fetches users for messaging based on a search query.
  * For the student panel, it only returns 'Teacher' or 'Student' types.
  *
  * @param {string} query The search string.
- * @returns {Array} An array of user objects matching the query and allowed types.
+ * @returns {Promise<Array>} A promise that resolves to an array of user objects matching the query and allowed types.
  */
-export const fetchUsers = (query) => {
-  const allowedTypes = ['Teacher', 'Student']; // Students can only message teachers and other students
-
-  if (!query) {
-    // Return a small sample of allowed types for initial suggestions
-    return mockUsers.filter(user => allowedTypes.includes(user.type)).slice(0, 5);
+export const fetchUsers = async (query) => {
+  try {
+    const allowedTypes = ['Teacher', 'Student']; // Students can only message teachers and other students
+    
+    // This would need to be implemented in the backend
+    // For now, we'll return an empty array and handle this in the backend
+    const response = await messageAPI.getAllMessages({ 
+      search: query,
+      allowedTypes: allowedTypes 
+    });
+    return response.data || [];
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return [];
   }
-  const lowerCaseQuery = query.toLowerCase();
-  return mockUsers.filter(user =>
-    (user.id.toLowerCase().includes(lowerCaseQuery) ||
-     user.name.toLowerCase().includes(lowerCaseQuery)) &&
-    allowedTypes.includes(user.type) // Filter by allowed types
-  );
 };
 
 /**
- * Simulates fetching a single user by their ID.
+ * Fetches a single user by their ID.
  *
  * @param {string} id The user ID to look up.
- * @returns {object|null} The user object if found, otherwise null.
+ * @returns {Promise<object|null>} A promise that resolves to the user object if found, otherwise null.
  */
-export const fetchUserById = (id) => {
-  const allowedTypes = ['Teacher', 'Student']; // Students can only message teachers and other students
-  const user = mockUsers.find(u => u.id === id);
-  return user && allowedTypes.includes(user.type) ? user : null; // Return null if type is not allowed
+export const fetchUserById = async (id) => {
+  try {
+    const allowedTypes = ['Teacher', 'Student']; // Students can only message teachers and other students
+    
+    // This would need to be implemented in the backend
+    // For now, we'll return null and handle this in the backend
+    const response = await messageAPI.getMessageById(id);
+    const user = response.data;
+    return user && allowedTypes.includes(user.type) ? user : null;
+  } catch (error) {
+    console.error('Error fetching user by ID:', error);
+    return null;
+  }
 };
 
-export default mockUsers;
+// Export empty array as default for backward compatibility
+export default [];

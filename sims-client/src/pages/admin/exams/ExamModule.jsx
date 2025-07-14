@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import axios from 'axios';
 import {
   BarChart2, Users, PieChart,
   TrendingUp, TrendingDown, MinusCircle, BookA, LayoutList
@@ -6,12 +7,16 @@ import {
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 // Import the mock data and constants from ReportsData.jsx
-import {
-  generateSchoolData,
-  GOOD_THRESHOLD,
-  AVERAGE_THRESHOLD,
-  POOR_THRESHOLD
-} from './ReportsData';
+// import {
+//   generateSchoolData,
+//   GOOD_THRESHOLD,
+//   AVERAGE_THRESHOLD,
+//   POOR_THRESHOLD
+// } from './ReportsData';
+
+const GOOD_THRESHOLD = 75;
+const AVERAGE_THRESHOLD = 50;
+const POOR_THRESHOLD = 0;
 
 const ExamModule = () => {
   const [activeReportClass, setActiveReportClass] = useState('Grade 1'); // Default to Grade 1 initially
@@ -22,11 +27,16 @@ const ExamModule = () => {
   const [studentGrades, setStudentGrades] = useState([]);
 
   useEffect(() => {
-    // Generate all data once when the component mounts
-    const { allGeneratedExams, allGeneratedStudents, allGeneratedGrades } = generateSchoolData();
-    setExams(allGeneratedExams);
-    setStudents(allGeneratedStudents);
-    setStudentGrades(allGeneratedGrades);
+    // Fetch data from backend API using axios
+    axios.get('http://localhost:5000/api/exam-reports//overview')
+      .then(res => {
+        setExams(res.data.exams || []);
+        setStudents(res.data.students || []);
+        setStudentGrades(res.data.grades || []);
+      })
+      .catch(err => {
+        console.error('Failed to fetch exam report data:', err);
+      });
   }, []);
 
   // --- Report Calculations (Memoized for performance) ---

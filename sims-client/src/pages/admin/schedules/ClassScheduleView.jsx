@@ -44,6 +44,47 @@ const categorizeAndSortSchedules = (schedules, selectedClass) => {
   return categories;
 };
 
+// Helper function to flatten schedules for display
+const flattenSchedules = (schedules, selectedClass) => {
+  const AllExamTypes = [
+    "Formative Assessment 1", "Formative Assessment 2", "Formative Assessment 3",
+    "Summative Assessment 1", "Summative Assessment 2", "Summative Assessment 3"
+  ];
+  const categories = {
+    "Formative Assessment": [],
+    "Summative Assessment": []
+  };
+  // Filter and flatten
+  schedules.filter(s => s.classId === selectedClass && AllExamTypes.includes(s.examType)).forEach(schedule => {
+    if (Array.isArray(schedule.subjectSlots)) {
+      schedule.subjectSlots.forEach(slot => {
+        const flat = {
+          _id: schedule._id,
+          classId: schedule.classId,
+          examType: schedule.examType,
+          subject: slot.subject,
+          date: slot.date,
+          time: slot.time,
+          subjectSlotIndex: schedule.subjectSlots.indexOf(slot),
+          fullSchedule: schedule // for edit/delete
+        };
+        if (schedule.examType.includes("Formative Assessment")) {
+          categories["Formative Assessment"].push(flat);
+        } else if (schedule.examType.includes("Summative Assessment")) {
+          categories["Summative Assessment"].push(flat);
+        }
+      });
+    }
+  });
+  // Sort by date/time
+  Object.values(categories).forEach(arr => arr.sort((a, b) => {
+    const dateTimeA = new Date(`${a.date}T${a.time}`);
+    const dateTimeB = new Date(`${b.date}T${b.time}`);
+    return dateTimeA - dateTimeB;
+  }));
+  return categories;
+};
+
 
 const ClassScheduleView = ({ allSchedules, selectedClass, onEditSchedule, onDeleteSchedule }) => {
   const [categorizedSchedules, setCategorizedSchedules] = useState(null);
@@ -56,7 +97,7 @@ const ClassScheduleView = ({ allSchedules, selectedClass, onEditSchedule, onDele
 
     try {
       // Process and categorize the schedules received from the parent
-      const categories = categorizeAndSortSchedules(allSchedules, selectedClass);
+      const categories = flattenSchedules(allSchedules, selectedClass);
       setCategorizedSchedules(categories);
     } catch (err) {
       console.error("Error categorizing schedules:", err);
@@ -118,24 +159,24 @@ const ClassScheduleView = ({ allSchedules, selectedClass, onEditSchedule, onDele
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {/* Iterate over each individual formative schedule */}
-                {categorizedSchedules["Formative Assessment"].map((schedule) => (
-                  <tr key={schedule.id} className="hover:bg-blue-50 transition-colors duration-150">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{schedule.examType}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{schedule.date}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{schedule.time}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{schedule.subject}</td>
+                {categorizedSchedules["Formative Assessment"].map((flat, idx) => (
+                  <tr key={flat._id + '-' + flat.subjectSlotIndex} className="hover:bg-blue-50 transition-colors duration-150">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{flat.examType}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flat.date}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flat.time}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flat.subject}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        onClick={() => onEditSchedule(schedule)} // Pass the entire schedule object for editing
+                        onClick={() => onEditSchedule(flat.fullSchedule)} // Pass the entire schedule object for editing
                         className="text-blue-600 hover:text-blue-800 mr-4 inline-flex items-center text-sm transition duration-150 ease-in-out transform hover:scale-105 px-2 py-1 border border-blue-600 rounded-md"
-                        title={`Edit ${schedule.examType}`}
+                        title={`Edit ${flat.examType}`}
                       >
                         <FiEdit className="mr-1" /> Edit
                       </button>
                       <button
-                        onClick={() => onDeleteSchedule(schedule.id)} // Pass schedule ID for deletion
+                        onClick={() => onDeleteSchedule(flat._id)} // Pass schedule ID for deletion
                         className="text-red-600 hover:text-red-800 inline-flex items-center text-sm transition duration-150 ease-in-out transform hover:scale-105 px-2 py-1 border border-red-600 rounded-md"
-                        title={`Delete ${schedule.examType}`}
+                        title={`Delete ${flat.examType}`}
                       >
                         <FiTrash2 className="mr-1" /> Delete
                       </button>
@@ -168,24 +209,24 @@ const ClassScheduleView = ({ allSchedules, selectedClass, onEditSchedule, onDele
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {/* Iterate over each individual summative schedule */}
-                {categorizedSchedules["Summative Assessment"].map((schedule) => (
-                  <tr key={schedule.id} className="hover:bg-blue-50 transition-colors duration-150">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{schedule.examType}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{schedule.date}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{schedule.time}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{schedule.subject}</td>
+                {categorizedSchedules["Summative Assessment"].map((flat, idx) => (
+                  <tr key={flat._id + '-' + flat.subjectSlotIndex} className="hover:bg-blue-50 transition-colors duration-150">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{flat.examType}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flat.date}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flat.time}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flat.subject}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        onClick={() => onEditSchedule(schedule)} // Pass the entire schedule object for editing
+                        onClick={() => onEditSchedule(flat.fullSchedule)} // Pass the entire schedule object for editing
                         className="text-blue-600 hover:text-blue-800 mr-4 inline-flex items-center text-sm transition duration-150 ease-in-out transform hover:scale-105 px-2 py-1 border border-blue-600 rounded-md"
-                        title={`Edit ${schedule.examType}`}
+                        title={`Edit ${flat.examType}`}
                       >
                         <FiEdit className="mr-1" /> Edit
                       </button>
                       <button
-                        onClick={() => onDeleteSchedule(schedule.id)} // Pass schedule ID for deletion
+                        onClick={() => onDeleteSchedule(flat._id)} // Pass schedule ID for deletion
                         className="text-red-600 hover:text-red-800 inline-flex items-center text-sm transition duration-150 ease-in-out transform hover:scale-105 px-2 py-1 border border-red-600 rounded-md"
-                        title={`Delete ${schedule.examType}`}
+                        title={`Delete ${flat.examType}`}
                       >
                         <FiTrash2 className="mr-1" /> Delete
                       </button>

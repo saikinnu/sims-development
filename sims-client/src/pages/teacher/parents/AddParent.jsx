@@ -7,9 +7,9 @@ import React, { useState } from 'react';
 
 function AddParent({ onClose, onSave, existingParents }) {
   const [formData, setFormData] = useState({
-    parentId: '',
+    user_id: '',
     password: '',
-    name: '',
+    full_name: '',
     email: '',
     phone: '',
     childrenCount: 1, // New field, default to 1
@@ -22,15 +22,15 @@ function AddParent({ onClose, onSave, existingParents }) {
 
   const validateForm = () => {
     const newErrors = {};
-    const { parentId, name, email, phone, password, childrenCount } = formData; // Removed subject, classes
-    const trimmedParentId = parentId.trim();
+    const { user_id, full_name, email, phone, password, childrenCount } = formData;
+    const trimmedUserId = user_id.trim();
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedPhone = phone.trim();
     const trimmedPassword = password.trim();
 
-    if (!trimmedParentId) newErrors.parentId = 'Parent ID is required';
+    if (!trimmedUserId) newErrors.user_id = 'Parent ID is required';
     if (!trimmedPassword) newErrors.password = 'Password is required';
-    if (!name.trim()) newErrors.name = 'Name is required';
+    if (!full_name.trim()) newErrors.full_name = 'Name is required';
 
     const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
     if (!trimmedEmail) newErrors.email = 'Email is required';
@@ -45,11 +45,11 @@ function AddParent({ onClose, onSave, existingParents }) {
     }
 
     // Check for duplicate Parent IDs, emails, and phone numbers among existing parents
-    if (existingParents.some(p => p.parentId.toLowerCase() === trimmedParentId.toLowerCase())) {
-      newErrors.parentId = 'Duplicate Parent ID found';
+    if (existingParents.some(p => p.parentId?.toLowerCase() === trimmedUserId.toLowerCase() || p.user_id?.toLowerCase() === trimmedUserId.toLowerCase())) {
+      newErrors.user_id = 'Duplicate Parent ID found';
     }
 
-    if (existingParents.some(p => p.email.toLowerCase() === trimmedEmail)) {
+    if (existingParents.some(p => p.email?.toLowerCase() === trimmedEmail)) {
       newErrors.email = 'Duplicate Gmail ID found';
     }
 
@@ -72,14 +72,12 @@ function AddParent({ onClose, onSave, existingParents }) {
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  const handleNumberChange = (e) => { // New handler for childrenCount
+  const handleNumberChange = (e) => {
     const { name, value } = e.target;
     const numValue = parseInt(value, 10);
     setFormData((prev) => ({ ...prev, [name]: isNaN(numValue) ? '' : numValue }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
-
-  // Removed handleSubjectChange and handleClassChange as they are no longer needed.
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -93,13 +91,13 @@ function AddParent({ onClose, onSave, existingParents }) {
 
     const formattedData = {
       ...formData,
-      parentId: formData.parentId.trim(),
+      user_id: formData.user_id.trim(),
       password: formData.password.trim(),
-      email: formData.email.trim(),
+      full_name: formData.full_name.trim(),
+      email: formData.email.trim().toLowerCase(),
       phone: formData.phone.trim(),
-      // childrenCount is already a number
-      address: formData.address?.trim() || '', // Handle optional address
-      image: formData.image, // Image can be null
+      address: formData.address?.trim() || '',
+      image: formData.image,
     };
 
     onSave(formattedData);
@@ -115,13 +113,13 @@ function AddParent({ onClose, onSave, existingParents }) {
           {/* Parent ID */}
           <div>
             <input
-              name="parentId"
-              value={formData.parentId}
+              name="user_id"
+              value={formData.user_id}
               onChange={handleChange}
               placeholder="Parent ID *"
-              className={`p-2 border rounded w-full ${errors.parentId ? 'border-red-500' : 'border-gray-300'}`}
+              className={`p-2 border rounded w-full ${errors.user_id ? 'border-red-500' : 'border-gray-300'}`}
             />
-            {errors.parentId && <p className="text-red-500 text-sm mt-1">{errors.parentId}</p>}
+            {errors.user_id && <p className="text-red-500 text-sm mt-1">{errors.user_id}</p>}
           </div>
 
           {/* Password with toggle */}
@@ -139,22 +137,27 @@ function AddParent({ onClose, onSave, existingParents }) {
               onClick={() => setShowPassword((prev) => !prev)}
               className="absolute top-1/2 right-3 transform -translate-y-1/2 text-gray-600 text-lg"
             >
-              {showPassword ? '🙈' : '👁️'}
+              {showPassword ? '\uD83D\uDE48' : '\uD83D\uDC41\uFE0F'}
             </button>
             {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
           </div>
 
           {/* Other Inputs */}
-          {['name', 'email', 'phone', 'address'].map((field) => (
-            <div key={field}>
+          {[
+            { name: 'full_name', label: 'Name *' },
+            { name: 'email', label: 'Email *' },
+            { name: 'phone', label: 'Phone *' },
+            { name: 'address', label: 'Address' },
+          ].map((field) => (
+            <div key={field.name}>
               <input
-                name={field}
-                value={formData[field]}
+                name={field.name}
+                value={formData[field.name]}
                 onChange={handleChange}
-                placeholder={`${field.charAt(0).toUpperCase() + field.slice(1)} *`}
-                className={`p-2 border rounded w-full ${errors[field] ? 'border-red-500' : 'border-gray-300'}`}
+                placeholder={field.label}
+                className={`p-2 border rounded w-full ${errors[field.name] ? 'border-red-500' : 'border-gray-300'}`}
               />
-              {errors[field] && <p className="text-red-500 text-sm mt-1">{errors[field]}</p>}
+              {errors[field.name] && <p className="text-red-500 text-sm mt-1">{errors[field.name]}</p>}
             </div>
           ))}
 
@@ -173,9 +176,6 @@ function AddParent({ onClose, onSave, existingParents }) {
             />
             {errors.childrenCount && <p className="text-red-500 text-sm mt-1">{errors.childrenCount}</p>}
           </div>
-
-          {/* Removed Subject Select */}
-          {/* Removed Classes Select */}
 
           {/* Image Upload */}
           <div>

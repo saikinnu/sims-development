@@ -4,13 +4,23 @@ import CountChart from "../components/CountChart";
 import EventCalendar from "../components/EventCalendar";
 import FinanceChart from "../components/FinanceChart";
 import UserCard from "../components/UserCard";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 function AdminPage() {
+  const [studentCount, setStudentCount] = useState(0);
+
+  useEffect(() => {
+    axios.get("/api/students/count")
+      .then(res => setStudentCount(res.data.count))
+      .catch(() => setStudentCount(0));
+  }, []);
+
   return (
     <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
       {/* USER CARDS - Now completely edge-to-edge */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3 lg:gap-6 w-full">
-        <UserCard type="student" />
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-3 lg:gap-6 w-full">
+        <UserCard type="student" count={studentCount} />
         <UserCard type="teacher" />
         <UserCard type="parent" />
         <UserCard type="staff" />

@@ -1,7 +1,16 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { FiPlus, FiEdit, FiTrash2 } from 'react-icons/fi';
 import { format, parseISO } from 'date-fns';
+import axios from 'axios';
 import { CreateEditHomeworkModal, CreateEditPersonalDiaryModal } from './AddDiary'; 
+
+axios.defaults.baseURL = 'http://localhost:5000';
+
+// Helper to get auth headers
+const getAuthHeaders = () => {
+    const token = JSON.parse(localStorage.getItem('authToken'));
+    return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 const DiaryModule = () => {
     const tabs = ["Home Work Diary", "Personal Diary"];
@@ -10,49 +19,51 @@ const DiaryModule = () => {
     const currentTeacherId = "teacher_T123";
 
     // --- State for Home Work Diary ---
-    const [homeworkEntries, setHomeworkEntries] = useState([
-        {
-            id: 'hw1',
-            teacherId: 'teacher_T123',
-            date: '2025-06-27',
-            homeworkItems: [
-                { subject: 'Mathematics', homework: 'Complete exercises on Quadratic Equations (pg 45-47).' },
-                { subject: 'Science', homework: 'Draw and label the parts of a plant cell and research photosynthesis.' }
-            ]
-        },
-        {
-            id: 'hw2',
-            teacherId: 'teacher_T123',
-            date: '2025-06-26',
-            homeworkItems: [
-                { subject: 'English', homework: 'Write a short story (250 words) based on the given prompt.' }
-            ]
-        },
-        {
-            id: 'hw3',
-            teacherId: 'teacher_T124',
-            date: '2025-06-27',
-            homeworkItems: [
-                { subject: 'History', homework: 'Research on World War I causes.' }
-            ]
-        },
-    ]);
+    const [homeworkEntries, setHomeworkEntries] = useState([]);
     const [showHomeworkModal, setShowHomeworkModal] = useState(false);
     const [editingHomework, setEditingHomework] = useState(null);
+    const [loadingHomework, setLoadingHomework] = useState(false);
 
     // --- State for Personal Diary ---
-    const [personalNotes, setPersonalNotes] = useState([
-        { id: 'pn1', teacherId: 'teacher_T123', date: '2025-06-27', title: 'Staff Meeting Notes', content: 'Discussed new grading policy. Follow up with John regarding Class 5 performance.' },
-        { id: 'pn2', teacherId: 'teacher_T123', date: '2025-06-26', title: 'To-Do List', content: '1. Prepare lesson plan for tomorrow\'s Math class. 2. Email parents about field trip. 3. Grade Science quizzes.' },
-        { id: 'pn3', teacherId: 'teacher_T124', date: '2025-06-27', title: 'New Idea', content: 'Experiment with group projects for history class.' },
-    ]);
+    const [personalNotes, setPersonalNotes] = useState([]);
     const [showPersonalDiaryModal, setShowPersonalDiaryModal] = useState(false);
     const [editingPersonalNote, setEditingPersonalNote] = useState(null);
+    const [loadingPersonal, setLoadingPersonal] = useState(false);
 
     const subjectOptions = [
         'Math', 'Science', 'English', 'History', 'Geography', 'Biology',
         'Chemistry', 'Physics', 'Computer Science', 'Art', 'Music', 'Drama',
     ];
+
+    // --- Fetch Data on Mount ---
+    useEffect(() => {
+        fetchHomeworkEntries();
+        fetchPersonalNotes();
+    }, []);
+
+    const fetchHomeworkEntries = async () => {
+        setLoadingHomework(true);
+        try {
+            const res = await axios.get(`/api/diary/homework`, { params: { teacherId: currentTeacherId }, headers: getAuthHeaders() });
+            setHomeworkEntries(res.data || []);
+        } catch (err) {
+            console.error('Failed to fetch homework entries:', err);
+        } finally {
+            setLoadingHomework(false);
+        }
+    };
+
+    const fetchPersonalNotes = async () => {
+        setLoadingPersonal(true);
+        try {
+            const res = await axios.get(`/api/diary/personal`, { params: { teacherId: currentTeacherId }, headers: getAuthHeaders() });
+            setPersonalNotes(res.data || []);
+        } catch (err) {
+            console.error('Failed to fetch personal notes:', err);
+        } finally {
+            setLoadingPersonal(false);
+        }
+    };
 
     // --- Home Work Diary Handlers ---
     const handleAddEditHomework = (entry = null) => {
@@ -60,31 +71,46 @@ const DiaryModule = () => {
         setShowHomeworkModal(true);
     };
 
-    const handleSaveHomework = (data) => {
+    const handleSaveHomework = async (data) => {
         if (editingHomework) {
-            setHomeworkEntries(prev => prev.map(e => (e.id === editingHomework.id ? { ...e, ...data } : e)));
-            console.log("Homework updated:", data);
+            // Edit
+            try {
+                const res = await axios.put(`/api/diary/homework/${editingHomework.id}`, data, { headers: getAuthHeaders() });
+                setHomeworkEntries(prev => prev.map(e => (e.id === editingHomework.id ? res.data : e)));
+                console.log("Homework updated:", res.data);
+            } catch (err) {
+                console.error('Failed to update homework:', err);
+            }
         } else {
-            const newEntry = { ...data, id: `hw${Date.now()}`, teacherId: currentTeacherId };
-            setHomeworkEntries(prev => [...prev, newEntry]);
-            console.log("Homework added:", newEntry);
+            // Add
+            try {
+                const res = await axios.post(`/api/diary/homework`, { ...data, teacherId: currentTeacherId }, { headers: getAuthHeaders() });
+                setHomeworkEntries(prev => [...prev, res.data]);
+                console.log("Homework added:", res.data);
+            } catch (err) {
+                console.error('Failed to add homework:', err);
+            }
         }
         setShowHomeworkModal(false);
         setEditingHomework(null);
     };
 
-    const handleDeleteHomework = (id) => {
+    const handleDeleteHomework = async (id) => {
         if (window.confirm("Are you sure you want to delete this homework entry?")) {
-            setHomeworkEntries(prev => prev.filter(e => e.id !== id));
-            console.log("Homework deleted:", id);
+            try {
+                await axios.delete(`/api/diary/homework/${id}`, { headers: getAuthHeaders() });
+                setHomeworkEntries(prev => prev.filter(e => e.id !== id));
+                console.log("Homework deleted:", id);
+            } catch (err) {
+                console.error('Failed to delete homework:', err);
+            }
         }
     };
 
     const filteredHomeworkEntries = useMemo(() => {
         return homeworkEntries
-            .filter(entry => entry.teacherId === currentTeacherId)
             .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-    }, [homeworkEntries, currentTeacherId]);
+    }, [homeworkEntries]);
 
     // --- Personal Diary Handlers ---
     const handleAddEditPersonalNote = (note = null) => {
@@ -92,31 +118,46 @@ const DiaryModule = () => {
         setShowPersonalDiaryModal(true);
     };
 
-    const handleSavePersonalNote = (data) => {
+    const handleSavePersonalNote = async (data) => {
         if (editingPersonalNote) {
-            setPersonalNotes(prev => prev.map(n => (n.id === editingPersonalNote.id ? { ...n, ...data } : n)));
-            console.log("Personal note updated:", data);
+            // Edit
+            try {
+                const res = await axios.put(`/api/diary/personal/${editingPersonalNote.id}`, data, { headers: getAuthHeaders() });
+                setPersonalNotes(prev => prev.map(n => (n.id === editingPersonalNote.id ? res.data : n)));
+                console.log("Personal note updated:", res.data);
+            } catch (err) {
+                console.error('Failed to update personal note:', err);
+            }
         } else {
-            const newNote = { ...data, id: `pn${Date.now()}`, teacherId: currentTeacherId };
-            setPersonalNotes(prev => [...prev, newNote]);
-            console.log("Personal note added:", newNote);
+            // Add
+            try {
+                const res = await axios.post(`/api/diary/personal`, { ...data, teacherId: currentTeacherId }, { headers: getAuthHeaders() });
+                setPersonalNotes(prev => [...prev, res.data]);
+                console.log("Personal note added:", res.data);
+            } catch (err) {
+                console.error('Failed to add personal note:', err);
+            }
         }
         setShowPersonalDiaryModal(false);
         setEditingPersonalNote(null);
     };
 
-    const handleDeletePersonalNote = (id) => {
+    const handleDeletePersonalNote = async (id) => {
         if (window.confirm("Are you sure you want to delete this personal note?")) {
-            setPersonalNotes(prev => prev.filter(n => n.id !== id));
-            console.log("Personal note deleted:", id);
+            try {
+                await axios.delete(`/api/diary/personal/${id}`, { headers: getAuthHeaders() });
+                setPersonalNotes(prev => prev.filter(n => n.id !== id));
+                console.log("Personal note deleted:", id);
+            } catch (err) {
+                console.error('Failed to delete personal note:', err);
+            }
         }
     };
 
     const filteredPersonalNotes = useMemo(() => {
         return personalNotes
-            .filter(note => note.teacherId === currentTeacherId)
             .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-    }, [personalNotes, currentTeacherId]);
+    }, [personalNotes]);
 
     return (
     <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
@@ -162,7 +203,9 @@ const DiaryModule = () => {
             {/* Tab Content Area */}
                 {activeTab === "Home Work Diary" && (
                     <>
-                        {filteredHomeworkEntries.length === 0 ? (
+                        {loadingHomework ? (
+                            <div className="text-center text-gray-500 py-10">Loading homework assignments...</div>
+                        ) : filteredHomeworkEntries.length === 0 ? (
                             <div className="text-center text-gray-500 py-10">No homework assignments found. Click "Add Homework" to add one!</div>
                         ) : (
                             <div className="space-y-4">
@@ -188,7 +231,7 @@ const DiaryModule = () => {
                                             </div>
                                         </div>
                                         <div className="space-y-2 text-sm text-gray-700 mt-2">
-                                            {entry.homeworkItems.map((item, idx) => (
+                                            {entry.homeworkItems && entry.homeworkItems.map((item, idx) => (
                                                 <div key={idx} className="bg-white p-3 rounded-md border border-gray-100 shadow-sm">
                                                     <p><span className="font-semibold">{item.subject}:</span> {item.homework}</p>
                                                 </div>
@@ -203,7 +246,9 @@ const DiaryModule = () => {
 
                 {activeTab === "Personal Diary" && (
                     <>
-                        {filteredPersonalNotes.length === 0 ? (
+                        {loadingPersonal ? (
+                            <div className="text-center text-gray-500 py-10">Loading personal notes...</div>
+                        ) : filteredPersonalNotes.length === 0 ? (
                             <div className="text-center text-gray-500 py-10">No personal notes found. Click "Add Personal Note" to add one!</div>
                         ) : (
                             <div className="space-y-4">

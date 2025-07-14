@@ -3,11 +3,12 @@ import CreatableSelect from 'react-select/creatable'; // Changed from 'Select'
 import { X, Paperclip, Send, Save } from 'lucide-react';
 import { fetchUsers, fetchUserById } from './MessageData'; // Import our mock data functions
 
-// Predefined recipient groups for a teacher panel
 const recipientOptions = [
-  { value: 'all-students-parents', label: 'Both Students & Parents' },
+  { value: 'all-users', label: 'All Users' }, // Changed 'all' to 'all-users' for clarity
   { value: 'all-students', label: 'All Students' },
+  { value: 'all-teachers', label: 'All Teachers' },
   { value: 'all-parents', label: 'All Parents' },
+  { value: 'all-staff', label: 'All Staff' },
 ];
 
 // Helper function to debounce an API call
@@ -38,20 +39,10 @@ function ComposeMessage({ onClose, onSend, onSaveDraft, replyTo }) {
   // Debounced function for loading individual recipients
   const loadIndividualRecipients = useCallback(
     debounce(async (inputValue, callback) => {
-      if (!inputValue) {
-        // If no input, return a small sample or common contacts (e.g., recent teachers, students, parents)
-        // For this mock, we'll return a few from each type for demonstration
-        const initialSuggestions = fetchUsers('').map(user => ({
-          value: user.id,
-          label: `${user.name} (${user.id}) - ${user.type}`
-        }));
-        callback(initialSuggestions);
-        return;
-      }
       setIsLoadingOptions(true);
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 300));
-      const users = fetchUsers(inputValue); // Use fetchUsers to get suggestions
+      const users = fetchUsers(inputValue); // Use fetchUsers to get suggestions (all types for admin)
       const options = users.map(user => ({
         value: user.id,
         label: `${user.name} (${user.id}) - ${user.type}`
@@ -96,9 +87,7 @@ function ComposeMessage({ onClose, onSend, onSaveDraft, replyTo }) {
         }));
       } else {
         // If not found by ID, treat it as an invalid input
-        // Using a custom message box instead of alert()
         console.error(`Invalid User ID: "${newInputValue}". Please enter a valid ID or select from suggestions.`);
-        // Optionally, you could show a temporary message on the UI
         // Remove the invalid option from the selected list
         setFormData(prev => ({
           ...prev,
@@ -116,7 +105,7 @@ function ComposeMessage({ onClose, onSend, onSaveDraft, replyTo }) {
     const files = Array.from(e.target.files);
     setFormData(prev => ({
       ...prev,
-      attachments: [...prev.attachments, ...files.map(file => file.name)]
+      attachments: [...prev.attachments, ...files] // Store File objects, not just names
     }));
   };
 
@@ -151,7 +140,7 @@ function ComposeMessage({ onClose, onSend, onSaveDraft, replyTo }) {
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"> {/* Added flex flex-col here */}
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"> {/* Added flex flex-col, removed overflow-hidden */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4"> {/* Header */}
           <h2 className="text-lg font-medium text-gray-900">New Message</h2>
           <button
@@ -168,10 +157,10 @@ function ComposeMessage({ onClose, onSend, onSaveDraft, replyTo }) {
             <label className="block text-sm font-medium text-gray-700 mb-1">To *</label>
             <CreatableSelect
               isMulti
-              options={recipientOptions} // Use combined options
+              options={recipientOptions} // Use the predefined group options
               value={formData.recipients}
               onChange={handleRecipientsChange}
-              placeholder="Select groups or type individual ID/name (e.g., T001, S101, P201)..."
+              placeholder="Select groups or type individual ID/name (e.g., T001, Alice Smith)..."
               className={`basic-select ${errors.recipients ? 'border-red-500' : ''}`}
               classNamePrefix="select"
               formatCreateLabel={(inputValue) => `Add individual ID/Name: "${inputValue}"`}
@@ -229,7 +218,7 @@ function ComposeMessage({ onClose, onSend, onSaveDraft, replyTo }) {
               <div className="mt-2 space-y-2">
                 {formData.attachments.map((file, index) => (
                   <div key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
-                    <span className="text-sm font-medium text-gray-700 truncate max-w-xs">{file}</span>
+                    <span className="text-sm font-medium text-gray-700 truncate max-w-xs">{file.name || file}</span>
                     <button
                       onClick={() => removeAttachment(index)}
                       className="text-gray-400 hover:text-gray-500"

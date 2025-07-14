@@ -23,7 +23,7 @@ exports.createTeacher = async (req, res) => {
     const subjects_taught = JSON.parse(req.body.subjects_taught || '[]');
     const assigned_classes = JSON.parse(req.body.assigned_classes || '[]');
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Password will be automatically hashed by the User model middleware
 
     // let profile_image = {};
     // if (req.files['profile_image']) {
@@ -48,7 +48,7 @@ exports.createTeacher = async (req, res) => {
       user_id,
       full_name,
       email,
-      password: hashedPassword,
+      password, // Will be hashed by User model middleware
       role: 'teacher',
       phone,
       address,
@@ -64,7 +64,7 @@ exports.createTeacher = async (req, res) => {
     const newTeacher = await User.create({
       user_id,
       email,
-      password: hashedPassword,
+      password, // Will be hashed by User model middleware
       role: 'teacher',
     });
 
