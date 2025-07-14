@@ -27,6 +27,7 @@ export const teacherAPI = {
   updateTeacher: (id, teacherData) => api.put(`/teachers/${id}`, teacherData),
   deleteTeacher: (id) => api.delete(`/teachers/${id}`),
   getTeacherProfile: () => api.get('/teachers/profile'),
+  getTeacherCount: () => api.get('/teachers/count'), // Added function for teacher count
 };
 
 // Student API
@@ -86,7 +87,7 @@ export const classAPI = {
   getClassById: (id) => api.get(`/classes/${id}`),
   createClass: (classData) => api.post('/classes', classData),
   updateClass: (id, classData) => api.put(`/classes/${id}`, classData),
-  deleteClass: (id) => api.delete(`/classes/${id}`),
+  getClassNames: () => api.get('/classes/names'),
 };
 
 // Subject API
@@ -293,6 +294,13 @@ export const adminStaffAPI = {
   deleteAdminStaff: (id) => api.delete(`/admin-staff/${id}`),
 };
 
+// Admin Profile API
+export const adminProfileAPI = {
+  getOwnProfile: () => api.get('/admin-profile/me'),
+  updateProfile: (id, profileData) => api.put(`/admin-profile/${id}`, profileData),
+  changePassword: (data) => api.post('/admin-profile/change-password', data),
+};
+
 export default {
   authAPI,
   userAPI,
@@ -321,4 +329,5 @@ export default {
   teacherScheduleAPI,
   reportCardAPI,
   adminStaffAPI,
+  adminProfileAPI,
 }; 

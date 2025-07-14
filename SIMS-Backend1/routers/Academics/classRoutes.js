@@ -27,6 +27,14 @@ router.get(
   classController.getClassById
 );
 
+// Get only class names and IDs (for dropdowns, etc.)
+router.get(
+  '/names',
+  protect,
+  checkRole('admin', 'superadmin', 'teacher', 'student'),
+  classController.getClassNames
+);
+
 // Update class (admin only)
 router.put(
   '/:id',

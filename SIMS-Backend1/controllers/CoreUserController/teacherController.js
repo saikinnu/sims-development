@@ -162,7 +162,8 @@ exports.deleteTeacher = async (req, res) => {
 
 exports.getTeacherProfile = async (req, res) => {
   try {
-    const teacherProfile = await Teacher.findOne({ teacher_id: req.user._id });
+    // Find teacher profile by user_id (which should match the user's user_id)
+    const teacherProfile = await Teacher.findOne({ user_id: req.user.user_id });
 
     if (!teacherProfile) {
       return res.status(404).json({ message: "Teacher profile not found" });
@@ -173,7 +174,15 @@ exports.getTeacherProfile = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
-
+// Get total student count
+exports.getTeacherCount = async (req, res) => {
+  try {
+    const count = await Teacher.countDocuments();
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 // module.exports = {
 //   createTeacher,
 //   // other controller functions

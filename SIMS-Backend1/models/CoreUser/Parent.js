@@ -4,8 +4,9 @@ const { Schema } = mongoose;
 const ParentSchema = new Schema(
   {
     user_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      // type: mongoose.Schema.Types.ObjectId,
+      type:String,
+      // ref: 'User',
       required: true,
       unique: true,
     },
@@ -42,6 +43,12 @@ const ParentSchema = new Schema(
     // profileImage: {
     //   type: String, // Cloudinary URL
     // },
+    children: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Student',
+      }
+    ],
   },
   {
     timestamps: true,

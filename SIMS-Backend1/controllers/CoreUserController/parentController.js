@@ -3,6 +3,7 @@ const Student = require('../../models/CoreUser/Student');
 const cloudinary = require('../../config/cloudinary');
 const User = require('../../models/CoreUser/User');
 const bcrypt = require("bcryptjs");
+const { getParentStudents, removeStudentFromParent } = require('../../utils/relationshipUtils');
 
 // CREATE
 exports.createParent = async (req, res) => {
@@ -51,11 +52,11 @@ exports.createParent = async (req, res) => {
     });
   } catch (err) {
     console.error('Error creating parent:', err);
-    res.status(400).json({ 
-      message: err.message.includes('duplicate key') ? 
-        'Duplicate user_id or email' : 
+    res.status(400).json({
+      message: err.message.includes('duplicate key') ?
+        'Duplicate user_id or email' :
         'Failed to create parent',
-      error: err.message 
+      error: err.message
     });
   }
 };
@@ -65,6 +66,7 @@ exports.getAllParents = async (req, res) => {
   try {
     const parents = await Parent.find()
       .populate('user_id', 'user_id email role -_id')
+      .populate('children', 'full_name admission_number class_id email contact status')
       .select('-__v');
     res.json(parents);
   } catch (err) {
@@ -76,7 +78,8 @@ exports.getAllParents = async (req, res) => {
 exports.getParentById = async (req, res) => {
   try {
     const parent = await Parent.findById(req.params.id)
-      .populate('user_id', 'user_id email role -_id');
+      .populate('user_id', 'user_id email role -_id')
+      .populate('children', 'full_name admission_number class_id email contact status');
     if (!parent) return res.status(404).json({ message: 'Parent not found' });
     res.json(parent);
   } catch (err) {
@@ -135,21 +138,21 @@ exports.deleteParent = async (req, res) => {
 exports.getMyParentProfile = async (req, res) => {
   try {
     console.log('getMyParentProfile called with user:', req.user);
-    
+
     if (req.user.role !== 'parent') {
       return res.status(403).json({ message: 'Access denied: Parents only' });
     }
 
     const parent = await Parent.findOne({ user_id: req.user._id });
     console.log('Found parent:', parent);
-    
+
     if (!parent) {
       return res.status(404).json({ message: 'Parent profile not found' });
     }
 
     // Find students where parent_id array contains the parent's _id
-    const students = await Student.find({ 
-      parent_id: { $in: [parent._id.toString()] } 
+    const students = await Student.find({
+      parent_id: { $in: [parent._id.toString()] }
     });
     console.log('Found students:', students.length);
 
@@ -166,7 +169,7 @@ exports.getMyParentProfile = async (req, res) => {
             console.error('Error fetching class details:', err);
           }
         }
-        
+
         return {
           ...student.toObject(),
           class_id: classDetails
@@ -182,5 +185,21 @@ exports.getMyParentProfile = async (req, res) => {
   } catch (err) {
     console.error('Error in getMyParentProfile:', err);
     res.status(500).json({ message: err.message });
+  }
+};
+// Get total student count
+exports.getParentCount = async (req, res) => {
+  console.log('getParentCount called');
+  try {
+    console.log('Attempting to count parents...'); // Debug log
+    const count = await Parent.countDocuments();
+    console.log(`Found ${count} parents`); // Debug log
+    res.json({ count });
+  } catch (err) {
+    console.error('Error in getParentCount:', err); // Detailed error log
+    res.status(500).json({
+      error: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 };

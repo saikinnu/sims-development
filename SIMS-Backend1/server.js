@@ -30,7 +30,8 @@ const otpRoutes = require('./routers/CoreUserRoutes/authOtpRoutes');
 const examReports = require('./routers/Attendance_Performance/examReportRoutes');
 const resourceRoutes = require('./routers/Library_Management/resourceRoutes');
 const teacherScheduleRoutes = require('./routers/Attendance_Performance/teacherScheduleRoutes');
-// const diaryRoutes = require('./routers/Communication_Activities/diaryRoutes');
+const adminProfileRoutes = require('./routers/CoreUserRoutes/adminProfileRoutes');
+const diaryRoutes = require('./routers/Communication_Activities/diaryRoutes');
 
 const app = express();
 app.use(express.json());
@@ -65,7 +66,7 @@ app.use('/api/books', bookRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/messages', messageRoutes);
-// app.use('/api/diary', diaryRoutes);
+app.use('/api/diary', diaryRoutes);
 app.use("/api/bank", bankRoutes);
 app.use('/api/fees', feeRoutes);
 app.use("/api/admins", adminRoutes);
@@ -73,6 +74,7 @@ app.use("/api/auth", otpRoutes);
 app.use('/api/exam-reports', examReports);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/teacher/schedules', teacherScheduleRoutes);
+app.use('/api/admin-profile', adminProfileRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => app.listen(process.env.PORT || 5000, () => console.log("Server successfully running")))

@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const Subject = require('../../models/AcademicSchema/Subject');
 const StudentMarks = require('../../models/Attendance_PerformanceSchema/StudentMarks');
 const Class = require('../../models/AcademicSchema/Class');
+const { addStudentToParent, updateStudentParents } = require('../../utils/relationshipUtils');
 
 
 // Create student
@@ -106,7 +107,13 @@ exports.createStudent = async (req, res) => {
       role: 'student',
     });
 
-    // await student.save();
+    // Update parent-child relationships
+    if (parent_id && parent_id.length > 0) {
+      for (const parentId of parent_id) {
+        await addStudentToParent(parentId, student._id);
+      }
+    }
+
     res.status(201).json(student);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -193,6 +200,11 @@ exports.updateStudent = async (req, res) => {
       }));
     }
 
+    // Handle parent relationship updates
+    if (updates.parent_id) {
+      await updateStudentParents(student._id, updates.parent_id);
+    }
+
     Object.assign(student, updates);
     const updated = await student.save();
     res.json(updated);
@@ -207,6 +219,14 @@ exports.deleteStudent = async (req, res) => {
     const student = await Student.findById(req.params.id);
 
     if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    // Remove student from all parents before deletion
+    if (student.parent_id && student.parent_id.length > 0) {
+      const { removeStudentFromParent } = require('../../utils/relationshipUtils');
+      for (const parentId of student.parent_id) {
+        await removeStudentFromParent(parentId, student._id);
+      }
+    }
 
     if (student.profile_image?.public_id) {
       await cloudinary.uploader.destroy(student.profile_image.public_id);

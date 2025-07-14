@@ -150,3 +150,15 @@ exports.getClassesBySubject = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Get only class names and IDs (for dropdowns, etc.)
+exports.getClassNames = async (req, res) => {
+  try {
+    const classes = await Class.find({}, { class_name: 1 }).sort({ class_name: 1 });
+    // Return as array of { value, label } for frontend select
+    const result = classes.map(cls => ({ value: cls._id, label: cls.class_name }));
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

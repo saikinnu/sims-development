@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require('../models/CoreUser/User');
+const AdminProfile = require('../models/CoreUser/AdminProfile');
 // const redisClient = require('../config/redisClient');
 
 // Validate and attach user
@@ -13,11 +14,13 @@ exports.protect = async (req, res, next) => {
     // if (blacklisted) return res.status(401).json({ message: "Token has been revoked" });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id).select("-password");
-
-
+    let user = await User.findById(decoded.id).select("-password");
+    if (!user) {
+      // Try AdminProfile if not found in User
+      user = await AdminProfile.findById(decoded.id).select("-password");
+    }
+    req.user = user;
     if (!req.user) return res.status(404).json({ message: "User not found" });
-
     next();
   } catch (err) {
     res.status(401).json({ message: "Token validation failed", error: err.message });

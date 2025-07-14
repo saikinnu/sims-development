@@ -1,15 +1,19 @@
 // src/pages/admin/profile/ProfileModule.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   User, Mail, Phone, Lock, Calendar, MapPin,
   Edit2, Save, Camera, XCircle, Eye, EyeOff
 } from 'lucide-react';
 import { useProfile } from './ProfileContext'; // Adjust the import path as necessary
+import { adminProfileAPI } from '../../../services/api';
 
 const ProfileModule = () => {
   const { profileData, setProfileData } = useProfile(); // setProfileData assumed to update general profile info
   const [isEditing, setIsEditing] = useState(false);
   const [localImage, setLocalImage] = useState(profileData.profileImage);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // State for password change functionality
   const [showPasswordChange, setShowPasswordChange] = useState(false);
@@ -24,6 +28,20 @@ const ProfileModule = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Fetch profile on mount
+  useEffect(() => {
+    setLoading(true);
+    setError('');
+    adminProfileAPI.getOwnProfile()
+      .then(res => {
+        setProfileData(res.data);
+        setLocalImage(res.data.profileImage || '/avatar.png');
+      })
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line
+  }, []);
+
   // Handler for general profile input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -31,12 +49,20 @@ const ProfileModule = () => {
   };
 
   // Handler for saving general profile changes
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsEditing(false);
-    // Ensure profileData.profileImage is updated with localImage
-    setProfileData(prev => ({ ...prev, profileImage: localImage }));
-    console.log('Saved profile:', profileData);
-    // In a real app, you'd send this data to your backend API
+    setLoading(true);
+    setError('');
+    try {
+      const updatedProfile = { ...profileData, profileImage: localImage };
+      const res = await adminProfileAPI.updateProfile(profileData._id, updatedProfile);
+      setProfileData(res.data);
+      setLocalImage(res.data.profileImage || '/avatar.png');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handlers for profile image
@@ -57,19 +83,23 @@ const ProfileModule = () => {
 
     setPasswordError(''); // Clear previous errors
     setPasswordSuccess(''); // Clear previous success messages
+    setLoading(true);
 
     if (!currentPassword || !newPassword || !confirmNewPassword) {
       setPasswordError('All password fields are required.');
+      setLoading(false);
       return;
     }
 
     if (newPassword !== confirmNewPassword) {
       setPasswordError('New password and confirmation do not match.');
+      setLoading(false);
       return;
     }
 
     if (newPassword.length < 8) {
       setPasswordError('New password must be at least 8 characters long.');
+      setLoading(false);
       return;
     }
 
@@ -83,6 +113,7 @@ const ProfileModule = () => {
     try {
 
       // const data = await response.json();
+      await adminProfileAPI.changePassword({ currentPassword, newPassword });
       setPasswordSuccess('Password changed successfully!');
       // Reset password fields
       setCurrentPassword('');
@@ -91,6 +122,8 @@ const ProfileModule = () => {
       setShowPasswordChange(false); // Optionally hide the form after success
     } catch (error) {
       setPasswordError(error.message || 'An unexpected error occurred.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -106,6 +139,8 @@ const ProfileModule = () => {
 
   return (
     <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
+      {loading && <div className="text-blue-600 font-semibold">Loading...</div>}
+      {error && <div className="text-red-600 font-semibold">{error}</div>}
         {/* Header */}
         <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
           <h1 className="text-3xl font-extrabold text-gray-900">Profile Settings</h1>

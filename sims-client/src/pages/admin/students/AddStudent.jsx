@@ -4,6 +4,7 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import axios from 'axios';
 import { Plus, X, Calendar, Venus, Briefcase, School, Paperclip, FileText, Image } from 'lucide-react'; // Added Image icon
 
 const CLASS_OPTIONS = [];

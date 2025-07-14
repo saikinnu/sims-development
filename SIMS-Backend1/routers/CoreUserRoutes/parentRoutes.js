@@ -40,5 +40,6 @@ router.delete(
   checkRole('admin','superadmin','teacher'),
   parentController.deleteParent
 );
+router.get('/count',protect,parentController.getParentCount);
 
 module.exports = router;

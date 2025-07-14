@@ -5,24 +5,64 @@ import EventCalendar from "../components/EventCalendar";
 import FinanceChart from "../components/FinanceChart";
 import UserCard from "../components/UserCard";
 import { useEffect, useState } from "react";
+import api from "../../../utils/axiosConfig";
+import { teacherAPI } from "../../../services/api";
 import axios from "axios";
 
 function AdminPage() {
   const [studentCount, setStudentCount] = useState(0);
+  const [teacherCount, setTeacherCount] = useState(0);
+  const [parentCount, setParentCount] = useState(0);
 
   useEffect(() => {
-    axios.get("/api/students/count")
+    // Fetch student count
+    api.get("/students/count")
       .then(res => setStudentCount(res.data.count))
       .catch(() => setStudentCount(0));
+    // Fetch teacher count
+  }, []);
+  const getTeacherCount = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/teachers/count', {
+        headers: {
+          'Authorization': `Bearer ${JSON.parse(localStorage.getItem('authToken'))}`
+        }
+      });
+      return response.data.count;
+    } catch (error) {
+      console.error('Error fetching teacher count:', error);
+      return 0;
+    }
+  }
+  useEffect(() => {
+    getTeacherCount().then(count => setTeacherCount(count));
   }, []);
 
+  const getParentCount = async () => {
+    console.log('getParentCount called');
+    try {
+      const response = await axios.get('http://localhost:5000/api/parents/count', {
+        headers: {
+          'Authorization': `Bearer ${JSON.parse(localStorage.getItem('authToken'))}`
+        }
+      });
+      return response.data.count;
+    } catch (error) {
+      console.log('Error fetching parent count:', error);
+      // console.error('Error fetching parent count:', error);
+      return 0;
+    }
+  }
+  useEffect(() => {
+    getParentCount().then(count => setParentCount(count));
+  }, []);
   return (
     <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
       {/* USER CARDS - Now completely edge-to-edge */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-3 lg:gap-6 w-full">
         <UserCard type="student" count={studentCount} />
-        <UserCard type="teacher" />
-        <UserCard type="parent" />
+        <UserCard type="teacher" count={teacherCount} />
+        <UserCard type="parent" count={parentCount} />
         <UserCard type="staff" />
       </div>
 
@@ -38,7 +78,7 @@ function AdminPage() {
               <AttendanceChart />
             </div>
           </div>
-          
+
           {/* BOTTOM CHART - Full bleed */}
           <div className="w-full h-[400px] lg:h-[500px]">
             <FinanceChart />
@@ -53,7 +93,7 @@ function AdminPage() {
 
       {/* ANNOUNCEMENTS - Full width no padding */}
       <div className="w-full">
-        <Announcements/>
+        <Announcements />
       </div>
     </div>
   );

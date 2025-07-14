@@ -42,6 +42,7 @@ import StudentDetails from './StudentDetails';
 
 const StudentModule = () => {
   const [students, setStudents] = useState([]);
+  const [classes, setClasses] = useState([]);
 
   const [filters, setFilters] = useState({
     searchQuery: '',
@@ -129,8 +130,10 @@ const StudentModule = () => {
   };
 
   // Classes for dropdown - you might want to fetch these from an API
-  const classes = ['9th', '10th', '11th', '12th'];
-  const classOptions = [{ value: 'all', label: 'All Classes' }, ...classes.map(cls => ({ value: cls, label: cls }))];
+  const classOptions = [
+    { value: 'all', label: 'All Classes' },
+    ...classes.map(cls => ({ value: cls._id, label: cls.class_name }))
+  ];
   const statusOptions = [
     { value: 'all', label: 'All Status' },
     { value: 'active', label: 'Active' },
@@ -186,6 +189,28 @@ const StudentModule = () => {
       }
     };
     fetchStudents();
+  }, []);
+
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const token = JSON.parse(localStorage.getItem('authToken'));
+        if (!token) {
+          console.error("No token found");
+          return;
+        }
+        const response = await axios.get('http://localhost:5000/api/classes/', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+        setClasses(response.data);
+      } catch (error) {
+        console.error('Failed to fetch classes:', error);
+      }
+    };
+    fetchClasses();
   }, []);
 
   // Placeholder for document upload API call

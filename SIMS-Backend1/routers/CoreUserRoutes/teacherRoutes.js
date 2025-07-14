@@ -7,6 +7,7 @@ const {
   updateTeacher,
   deleteTeacher,
   getTeacherProfile,
+  getTeacherCount,
 } = require('../../controllers/CoreUserController/teacherController');
 
 const { protect, adminOnly, checkRole } = require('../../middlewares/authMiddleware');
@@ -25,6 +26,7 @@ router.post(
 );
 
 router.get('/', protect, getAllTeachers);
+router.get('/count', protect, getTeacherCount);
 router.get('/:id', protect, getTeacherById);
 router.get('/profile', protect, checkRole('teacher'), getTeacherProfile);
 
@@ -40,5 +42,6 @@ router.put(
 );
 
 router.delete('/:id', protect, checkRole('admin','superadmin'), deleteTeacher);
+
 
 module.exports = router;

@@ -16,7 +16,8 @@ const DiaryModule = () => {
     const tabs = ["Home Work Diary", "Personal Diary"];
     const [activeTab, setActiveTab] = useState(tabs[0]);
 
-    const currentTeacherId = "teacher_T123";
+    const [currentTeacherId, setCurrentTeacherId] = useState(null);
+    const [loadingTeacherId, setLoadingTeacherId] = useState(true);
 
     // --- State for Home Work Diary ---
     const [homeworkEntries, setHomeworkEntries] = useState([]);
@@ -35,11 +36,30 @@ const DiaryModule = () => {
         'Chemistry', 'Physics', 'Computer Science', 'Art', 'Music', 'Drama',
     ];
 
+    // --- Fetch Teacher Profile ---
+    const fetchTeacherProfile = async () => {
+        try {
+            const res = await axios.get('/api/teachers/profile', { headers: getAuthHeaders() });
+            setCurrentTeacherId(res.data._id);
+        } catch (err) {
+            console.error('Failed to fetch teacher profile:', err);
+        } finally {
+            setLoadingTeacherId(false);
+        }
+    };
+
     // --- Fetch Data on Mount ---
     useEffect(() => {
-        fetchHomeworkEntries();
-        fetchPersonalNotes();
+        fetchTeacherProfile();
     }, []);
+
+    // --- Fetch Data when Teacher ID is available ---
+    useEffect(() => {
+        if (currentTeacherId) {
+            fetchHomeworkEntries();
+            fetchPersonalNotes();
+        }
+    }, [currentTeacherId]);
 
     const fetchHomeworkEntries = async () => {
         setLoadingHomework(true);
@@ -75,8 +95,8 @@ const DiaryModule = () => {
         if (editingHomework) {
             // Edit
             try {
-                const res = await axios.put(`/api/diary/homework/${editingHomework.id}`, data, { headers: getAuthHeaders() });
-                setHomeworkEntries(prev => prev.map(e => (e.id === editingHomework.id ? res.data : e)));
+                const res = await axios.put(`/api/diary/homework/${editingHomework._id}`, data, { headers: getAuthHeaders() });
+                setHomeworkEntries(prev => prev.map(e => (e._id === editingHomework._id ? res.data : e)));
                 console.log("Homework updated:", res.data);
             } catch (err) {
                 console.error('Failed to update homework:', err);
@@ -99,7 +119,7 @@ const DiaryModule = () => {
         if (window.confirm("Are you sure you want to delete this homework entry?")) {
             try {
                 await axios.delete(`/api/diary/homework/${id}`, { headers: getAuthHeaders() });
-                setHomeworkEntries(prev => prev.filter(e => e.id !== id));
+                setHomeworkEntries(prev => prev.filter(e => e._id !== id));
                 console.log("Homework deleted:", id);
             } catch (err) {
                 console.error('Failed to delete homework:', err);
@@ -122,8 +142,8 @@ const DiaryModule = () => {
         if (editingPersonalNote) {
             // Edit
             try {
-                const res = await axios.put(`/api/diary/personal/${editingPersonalNote.id}`, data, { headers: getAuthHeaders() });
-                setPersonalNotes(prev => prev.map(n => (n.id === editingPersonalNote.id ? res.data : n)));
+                const res = await axios.put(`/api/diary/personal/${editingPersonalNote._id}`, data, { headers: getAuthHeaders() });
+                setPersonalNotes(prev => prev.map(n => (n._id === editingPersonalNote._id ? res.data : n)));
                 console.log("Personal note updated:", res.data);
             } catch (err) {
                 console.error('Failed to update personal note:', err);
@@ -146,7 +166,7 @@ const DiaryModule = () => {
         if (window.confirm("Are you sure you want to delete this personal note?")) {
             try {
                 await axios.delete(`/api/diary/personal/${id}`, { headers: getAuthHeaders() });
-                setPersonalNotes(prev => prev.filter(n => n.id !== id));
+                setPersonalNotes(prev => prev.filter(n => n._id !== id));
                 console.log("Personal note deleted:", id);
             } catch (err) {
                 console.error('Failed to delete personal note:', err);
@@ -158,6 +178,24 @@ const DiaryModule = () => {
         return personalNotes
             .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
     }, [personalNotes]);
+
+    // Show loading state while fetching teacher ID
+    if (loadingTeacherId) {
+        return (
+            <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
+                <div className="text-center text-gray-500 py-10">Loading teacher profile...</div>
+            </div>
+        );
+    }
+
+    // Show error state if teacher ID couldn't be fetched
+    if (!currentTeacherId) {
+        return (
+            <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
+                <div className="text-center text-red-500 py-10">Failed to load teacher profile. Please try again.</div>
+            </div>
+        );
+    }
 
     return (
     <div className="px-0 sm:px-2 md:px-4 lg:p-6 flex flex-col gap-2 sm:gap-4 lg:gap-8">
@@ -210,7 +248,7 @@ const DiaryModule = () => {
                         ) : (
                             <div className="space-y-4">
                                 {filteredHomeworkEntries.map(entry => (
-                                    <div key={entry.id} className="border border-gray-200 rounded-md p-4 bg-gray-50 flex flex-col">
+                                    <div key={entry._id} className="border border-gray-200 rounded-md p-4 bg-gray-50 flex flex-col">
                                         <div className="flex justify-between items-start mb-2">
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs text-gray-500">{format(parseISO(entry.date), 'MMM dd, yyyy')}</p>
@@ -223,7 +261,7 @@ const DiaryModule = () => {
                                                     <FiEdit className="mr-1" /> Edit
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDeleteHomework(entry.id)}
+                                                    onClick={() => handleDeleteHomework(entry._id)}
                                                     className="bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1 rounded-md text-sm font-medium transition duration-200 flex items-center"
                                                 >
                                                     <FiTrash2 className="mr-1" /> Delete
@@ -253,7 +291,7 @@ const DiaryModule = () => {
                         ) : (
                             <div className="space-y-4">
                                 {filteredPersonalNotes.map(note => (
-                                    <div key={note.id} className="border border-gray-200 rounded-md p-4 bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                                    <div key={note._id} className="border border-gray-200 rounded-md p-4 bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center">
                                         <div className="flex-1 min-w-0 mb-2 sm:mb-0">
                                             <p className="text-xs text-gray-500">{format(parseISO(note.date), 'MMM dd, yyyy')}</p>
                                             <h3 className="text-lg font-semibold text-gray-800 truncate">{note.title}</h3>
@@ -267,7 +305,7 @@ const DiaryModule = () => {
                                                 <FiEdit className="mr-1" /> Edit
                                             </button>
                                             <button
-                                                onClick={() => handleDeletePersonalNote(note.id)}
+                                                onClick={() => handleDeletePersonalNote(note._id)}
                                                 className="bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1 rounded-md text-sm font-medium transition duration-200 flex items-center"
                                             >
                                                 <FiTrash2 className="mr-1" /> Delete

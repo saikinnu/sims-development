@@ -42,15 +42,14 @@ const StudentSchema = new mongoose.Schema(
     },
     parent_id: [
       {
-        // type: mongoose.Schema.Types.ObjectId,
-        type:String,
-        // ref: "Parent",
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Parent",
       }
     ],
     class_id: {
-      // type: mongoose.Schema.Types.ObjectId,
-      type:String
-      // ref: "Class", // FK to Classes.class_id
+      type: mongoose.Schema.Types.ObjectId,
+      // type:String
+      ref: "Class", // FK to Classes.class_id
       // required: true,
     },
     blood_group: {

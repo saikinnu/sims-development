@@ -93,7 +93,7 @@ exports.loginTeacher = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const teacherProfile = await Teacher.findOne({ teacher_id: user._id });
+    const teacherProfile = await Teacher.findOne({ user_id: user.user_id });
 
     if (!teacherProfile) {
       return res.status(404).json({ message: 'Teacher profile not found' });
